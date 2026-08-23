@@ -12,19 +12,31 @@ interface PersonOption {
 
 const SERVICE_TYPES = ['CCTV', 'Access Control', 'Fire Alarm', 'Fire Water', 'BMS', 'Electronic Security'];
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
+const STATUSES = ['open', 'scheduled', 'in_progress', 'paused', 'completed'];
 
-export function WorkOrderFormModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+export function WorkOrderFormModal({
+  order = null,
+  onClose,
+  onSaved,
+}: {
+  order?: any | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isEdit = !!order;
   const [people, setPeople] = useState<PersonOption[]>([]);
-  const [client, setClient] = useState('');
-  const [site, setSite] = useState('');
-  const [address, setAddress] = useState('');
-  const [serviceType, setServiceType] = useState(SERVICE_TYPES[0]);
-  const [priority, setPriority] = useState('medium');
-  const [scheduledDate, setScheduledDate] = useState('');
-  const [scheduledTime, setScheduledTime] = useState('09:00');
-  const [durationHrs, setDurationHrs] = useState(2);
-  const [description, setDescription] = useState('');
-  const [equipment, setEquipment] = useState('');
+  const [client, setClient] = useState(order?.client ?? '');
+  const [site, setSite] = useState(order?.site ?? '');
+  const [address, setAddress] = useState(order?.address ?? '');
+  const [serviceType, setServiceType] = useState(order?.service_type ?? SERVICE_TYPES[0]);
+  const [priority, setPriority] = useState(order?.priority ?? 'medium');
+  const [status, setStatus] = useState(order?.status ?? 'open');
+  const [progress, setProgress] = useState(order?.progress ?? 0);
+  const [scheduledDate, setScheduledDate] = useState(order?.scheduled_date ?? '');
+  const [scheduledTime, setScheduledTime] = useState(order?.scheduled_time ?? '09:00');
+  const [durationHrs, setDurationHrs] = useState(order?.duration_hrs ?? 2);
+  const [description, setDescription] = useState(order?.description ?? '');
+  const [equipment, setEquipment] = useState(order?.equipment ?? '');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +49,17 @@ export function WorkOrderFormModal({ onClose, onSaved }: { onClose: () => void; 
         .in('role', ['technician', 'supervisor'])
         .order('full_name');
       if (data) setPeople(data as PersonOption[]);
+
+      if (isEdit) {
+        const preselected = new Set<string>();
+        if (order.technician_id) preselected.add(order.technician_id);
+        const { data: existing } = await supabase
+          .from('work_order_assignees')
+          .select('user_id')
+          .eq('work_order_id', order.id);
+        (existing ?? []).forEach((r: any) => preselected.add(r.user_id));
+        setSelectedIds([...preselected]);
+      }
     })();
   }, []);
 
@@ -53,45 +76,47 @@ export function WorkOrderFormModal({ onClose, onSaved }: { onClose: () => void; 
 
     const primaryTechnician = people.find((p) => selectedIds.includes(p.id) && p.role === 'technician');
 
-    const { data: order, error: insertError } = await supabase
-      .from('work_orders')
-      .insert({
-        code: genCode(),
-        client,
-        site,
-        address,
-        service_type: serviceType,
-        priority,
-        status: 'open',
-        technician_id: primaryTechnician?.id ?? null,
-        scheduled_date: scheduledDate,
-        scheduled_time: scheduledTime,
-        duration_hrs: durationHrs,
-        description,
-        equipment,
-        progress: 0,
-      })
-      .select()
-      .single();
+    const payload = {
+      client,
+      site,
+      address,
+      service_type: serviceType,
+      priority,
+      status,
+      progress,
+      technician_id: primaryTechnician?.id ?? null,
+      scheduled_date: scheduledDate,
+      scheduled_time: scheduledTime,
+      duration_hrs: durationHrs,
+      description,
+      equipment,
+    };
 
-    if (insertError || !order) {
-      setSaving(false);
-      setError(insertError?.message || 'Unable to create work order.');
-      return;
+    let orderId = order?.id;
+
+    if (isEdit) {
+      const { error: updateError } = await supabase.from('work_orders').update(payload).eq('id', orderId);
+      if (updateError) { setSaving(false); setError(updateError.message); return; }
+    } else {
+      const { data: created, error: insertError } = await supabase
+        .from('work_orders')
+        .insert({ ...payload, code: genCode() })
+        .select()
+        .single();
+      if (insertError || !created) { setSaving(false); setError(insertError?.message || 'Unable to create work order.'); return; }
+      orderId = created.id;
     }
 
+    // Reconcile assignees: clear and re-insert (simplest, avoids diffing)
+    await supabase.from('work_order_assignees').delete().eq('work_order_id', orderId);
     if (selectedIds.length > 0) {
       const rows = selectedIds.map((user_id) => ({
-        work_order_id: order.id,
+        work_order_id: orderId,
         user_id,
         role_on_order: people.find((p) => p.id === user_id)?.role === 'supervisor' ? 'supervisor' : 'technician',
       }));
       const { error: assignError } = await supabase.from('work_order_assignees').insert(rows);
-      if (assignError) {
-        setSaving(false);
-        setError(`Order created, but assigning people failed: ${assignError.message}`);
-        return;
-      }
+      if (assignError) { setSaving(false); setError(`Saved, but assigning people failed: ${assignError.message}`); return; }
     }
 
     setSaving(false);
@@ -101,11 +126,11 @@ export function WorkOrderFormModal({ onClose, onSaved }: { onClose: () => void; 
   return (
     <Modal
       open onClose={onClose}
-      title="Create Work Order"
+      title={isEdit ? `Edit Work Order — ${order.code}` : 'Create Work Order'}
       size="lg"
       footer={<>
         <button className="btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
-        <button className="btn-primary" onClick={submit} disabled={saving}>{saving ? 'Creating…' : 'Create work order'}</button>
+        <button className="btn-primary" onClick={submit} disabled={saving}>{saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create work order'}</button>
       </>}
     >
       {error && (
@@ -128,6 +153,22 @@ export function WorkOrderFormModal({ onClose, onSaved }: { onClose: () => void; 
             {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
         </div>
+
+        {isEdit && (
+          <>
+            <div>
+              <label className="label">Status</label>
+              <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
+                {STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Progress ({progress}%)</label>
+              <input type="range" min={0} max={100} step={5} value={progress} onChange={(e) => setProgress(Number(e.target.value))} className="w-full mt-3" />
+            </div>
+          </>
+        )}
+
         <div><label className="label">Scheduled date</label><input type="date" className="input" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} /></div>
         <div><label className="label">Scheduled time</label><input type="time" className="input" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} /></div>
         <div><label className="label">Duration (hrs)</label><input type="number" min={0.5} step={0.5} className="input" value={durationHrs} onChange={(e) => setDurationHrs(Number(e.target.value))} /></div>

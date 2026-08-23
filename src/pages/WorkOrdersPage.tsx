@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Search, Filter, FilePlus2, MapPin, Clock, ChevronRight, Users as UsersIcon,
+  Search, Filter, FilePlus2, MapPin, Clock, ChevronRight, Users as UsersIcon, Wrench,
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, Avatar, Badge, ProgressBar } from '@/components/ui';
@@ -12,6 +12,14 @@ import { supabase } from '@/lib/supabase';
 import { WorkOrderFormModal } from '@/components/WorkOrderFormModal';
 
 type View = 'table' | 'kanban';
+
+const COLUMNS: { key: WOStatus; label: string; color: string }[] = [
+  { key: 'open', label: 'Open', color: 'border-t-ink-300' },
+  { key: 'scheduled', label: 'Scheduled', color: 'border-t-primary-400' },
+  { key: 'in_progress', label: 'In Progress', color: 'border-t-blue-400' },
+  { key: 'paused', label: 'Paused', color: 'border-t-amber-400' },
+  { key: 'completed', label: 'Completed', color: 'border-t-emerald-400' },
+];
 
 export function WorkOrdersPage({
   title = 'Work Orders',
@@ -32,39 +40,66 @@ export function WorkOrdersPage({
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<any | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
 
   const canManage = role === 'admin' || role === 'supervisor';
 
   const fetchOrders = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data: orders, error: ordersError } = await supabase
       .from('work_orders')
-      .select(`
-        *,
-        technician:profiles!work_orders_technician_id_fkey(full_name, initials, avatar_color),
-        work_order_assignees(user_id, role_on_order, profiles(full_name, initials, avatar_color))
-      `)
+      .select('*')
       .order('scheduled_date', { ascending: true });
-    if (!error && data) setRows(data);
+
+    if (ordersError || !orders) { setLoading(false); return; }
+
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, initials, avatar_color');
+    const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+
+    const orderIds = orders.map((o: any) => o.id);
+    const { data: assignees } = orderIds.length > 0
+      ? await supabase.from('work_order_assignees').select('work_order_id, user_id, role_on_order').in('work_order_id', orderIds)
+      : { data: [] as any[] };
+
+    const merged = orders.map((o: any) => ({
+      ...o,
+      technician: o.technician_id ? profileMap.get(o.technician_id) : null,
+      work_order_assignees: (assignees ?? [])
+        .filter((a: any) => a.work_order_id === o.id)
+        .map((a: any) => ({ ...a, profiles: profileMap.get(a.user_id) })),
+    }));
+
+    setRows(merged);
     setLoading(false);
   };
 
   useEffect(() => { fetchOrders(); }, []);
 
-  const handleSaved = () => { setCreateOpen(false); fetchOrders(); };
+  const handleSaved = () => { setCreateOpen(false); setEditingOrder(null); fetchOrders(); };
+
+  const handleRowClick = (w: any) => {
+    onSelect(w);
+    if (canManage) setEditingOrder(w);
+  };
+
+  const handleStatusDrop = async (targetStatus: WOStatus) => {
+    if (!draggedId || !canManage) { setDraggedId(null); return; }
+    const id = draggedId;
+    setDraggedId(null);
+    setRows((prev) => prev.map((w) => (w.id === id ? { ...w, status: targetStatus, progress: targetStatus === 'completed' ? 100 : w.progress } : w)));
+    await supabase.from('work_orders').update({
+      status: targetStatus,
+      ...(targetStatus === 'completed' ? { progress: 100 } : {}),
+    }).eq('id', id);
+  };
 
   const filtered = rows.filter((w) =>
     (status === 'all' || w.status === status) &&
     (w.client.toLowerCase().includes(q.toLowerCase()) || w.code.toLowerCase().includes(q.toLowerCase()) || w.service_type.toLowerCase().includes(q.toLowerCase())),
   );
-
-  const columns: { key: WOStatus; label: string; color: string }[] = [
-    { key: 'open', label: 'Open', color: 'border-t-ink-300' },
-    { key: 'scheduled', label: 'Scheduled', color: 'border-t-primary-400' },
-    { key: 'in_progress', label: 'In Progress', color: 'border-t-blue-400' },
-    { key: 'paused', label: 'Paused', color: 'border-t-amber-400' },
-    { key: 'completed', label: 'Completed', color: 'border-t-emerald-400' },
-  ];
 
   const extraAssignees = (w: any) => (w.work_order_assignees ?? []).filter((a: any) => a.user_id !== w.technician_id);
 
@@ -118,8 +153,12 @@ export function WorkOrdersPage({
                   const tech = w.technician;
                   const extras = extraAssignees(w);
                   return (
-                    <tr key={w.id} className="hover:bg-ink-50/40 cursor-pointer" onClick={() => onSelect(w)}>
-                      <td className="td"><div className="font-mono text-xs text-primary-700 font-semibold">{w.code}</div><div className="text-xs text-ink-400 mt-0.5 max-w-[260px] truncate">{w.description}</div></td>
+                    <tr key={w.id} className="hover:bg-ink-50/40 cursor-pointer" onClick={() => handleRowClick(w)}>
+                      <td className="td">
+                        <div className="font-mono text-xs text-primary-700 font-semibold">{w.code}</div>
+                        <div className="text-xs text-ink-400 mt-0.5 max-w-[260px] truncate">{w.description}</div>
+                        {w.equipment && <div className="text-[11px] text-ink-500 mt-0.5 flex items-center gap-1"><Wrench size={10} /> {w.equipment}</div>}
+                      </td>
                       <td className="td"><div className="font-medium text-ink-900">{w.client}</div><div className="text-xs text-ink-500 flex items-center gap-1 mt-0.5"><MapPin size={11} /> {w.site}</div></td>
                       <td className="td"><Badge className={serviceColor(w.service_type)}>{w.service_type}</Badge></td>
                       <td className="td"><Badge className={`${priorityColor(w.priority)} capitalize`}>{w.priority}</Badge></td>
@@ -149,10 +188,15 @@ export function WorkOrdersPage({
         ) : (
           <div className="p-4 overflow-x-auto">
             <div className="flex gap-3 min-w-[1000px]">
-              {columns.map((col) => {
+              {COLUMNS.map((col) => {
                 const items = filtered.filter((w) => w.status === col.key);
                 return (
-                  <div key={col.key} className="flex-1 min-w-[200px]">
+                  <div
+                    key={col.key}
+                    className="flex-1 min-w-[200px]"
+                    onDragOver={(e) => canManage && e.preventDefault()}
+                    onDrop={() => handleStatusDrop(col.key)}
+                  >
                     <div className={cn('rounded-t-lg bg-ink-50/70 px-3 py-2 border-t-2', col.color)}>
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-semibold text-ink-800">{col.label}</span>
@@ -163,13 +207,20 @@ export function WorkOrdersPage({
                       {items.map((w) => {
                         const tech = w.technician;
                         return (
-                          <div key={w.id} onClick={() => onSelect(w)} className="card-pad cursor-pointer hover:shadow-card-md hover:border-primary-200 transition-all p-3">
+                          <div
+                            key={w.id}
+                            draggable={canManage}
+                            onDragStart={() => canManage && setDraggedId(w.id)}
+                            onClick={() => handleRowClick(w)}
+                            className={cn('card-pad transition-all p-3', canManage ? 'cursor-grab active:cursor-grabbing hover:shadow-card-md hover:border-primary-200' : 'cursor-pointer')}
+                          >
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-mono text-[11px] font-semibold text-primary-700">{w.code}</span>
                               <Badge className={priorityColor(w.priority)}>{w.priority}</Badge>
                             </div>
                             <div className="text-sm font-medium text-ink-900 truncate">{w.client}</div>
                             <div className="text-xs text-ink-500 flex items-center gap-1 mt-1"><MapPin size={10} /> {w.site}</div>
+                            {w.equipment && <div className="text-[10px] text-ink-400 flex items-center gap-1 mt-1"><Wrench size={9} /> {w.equipment}</div>}
                             <div className="mt-2.5 flex items-center justify-between">
                               <Badge className={serviceColor(w.service_type)}>{w.service_type}</Badge>
                               {tech ? <Avatar initials={tech.initials} color={tech.avatar_color} size="xs" /> : <span className="text-[10px] text-ink-400">Unassigned</span>}
@@ -178,17 +229,19 @@ export function WorkOrdersPage({
                           </div>
                         );
                       })}
-                      {items.length === 0 && <div className="text-center text-xs text-ink-300 py-8">No items</div>}
+                      {items.length === 0 && <div className="text-center text-xs text-ink-300 py-8">No items{canManage ? ' — drop here' : ''}</div>}
                     </div>
                   </div>
                 );
               })}
             </div>
+            {canManage && <p className="text-xs text-ink-400 mt-3 px-1">Tip: drag a card to another column to change its status.</p>}
           </div>
         )}
       </Card>
 
       {createOpen && <WorkOrderFormModal onClose={() => setCreateOpen(false)} onSaved={handleSaved} />}
+      {editingOrder && <WorkOrderFormModal order={editingOrder} onClose={() => setEditingOrder(null)} onSaved={handleSaved} />}
     </div>
   );
 }
