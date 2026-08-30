@@ -91,7 +91,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
                 <div className="text-[10px] font-medium uppercase tracking-widest text-white/50">electronics engineer</div>
               </div>
             </div>
-            <span className="text-xs font-medium text-white/60 border border-white/20 rounded-full px-3 py-1">v3.2 Enterprise</span>
+            <span className="text-xs font-medium text-white/60 border border-white/20 rounded-full px-3 py-1">v2.0 Enterprise</span>
           </div>
 
           <div className="max-w-md">

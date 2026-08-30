@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { Logo } from '@/components/Logo';
 import { Avatar } from '@/components/ui';
 import type { Role } from '@/data/mockData';
-import { notifications } from '@/data/mockData';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 
 type NavConfig = { label: string; icon: typeof LayoutDashboard; page: string };
@@ -29,6 +29,7 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
       { label: 'Calendar', icon: Calendar, page: 'calendar' },
       { label: 'Documents', icon: FolderOpen, page: 'documents' },
       { label: 'Reports', icon: BarChart3, page: 'reports' },
+      { label: 'Solicitudes', icon: FormInput, page: 'form_requests' },
     ]},
     { group: 'System', items: [
       { label: 'Audit Logs', icon: History, page: 'audit' },
@@ -69,6 +70,17 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
   ],
 };
 
+function timeAgo(iso: string) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} hr ago`;
+  const day = Math.floor(hr / 24);
+  return `${day} day${day === 1 ? '' : 's'} ago`;
+}
+
 interface ShellProps {
   role: Role;
   page: string;
@@ -82,6 +94,7 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [notifs, setNotifs] = useState<any[]>([]);
   const { profile } = useAuth();
   const userName = profile?.full_name ?? 'User';
   const userEmail = profile?.email ?? '';
@@ -89,7 +102,34 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
   const userInitials = profile?.initials ?? 'U';
   const userAvatarColor = profile?.avatar_color ?? 'bg-primary-600';
   const nav = navByRole[role];
-  const unread = notifications.filter((n) => n.unread).length;
+
+  useEffect(() => {
+    if (!profile) return;
+    fetchNotifs();
+  }, [profile?.id]);
+
+  const fetchNotifs = async () => {
+    if (!profile) return;
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', profile.id)
+      .order('created_at', { ascending: false })
+      .limit(8);
+    if (data) setNotifs(data);
+  };
+
+  const unread = notifs.filter((n) => n.unread).length;
+
+  const openNotification = async (n: any) => {
+    if (n.unread) {
+      await supabase.from('notifications').update({ unread: false }).eq('id', n.id);
+      setNotifs((prev) => prev.map((x) => (x.id === n.id ? { ...x, unread: false } : x)));
+    }
+    setNotifOpen(false);
+    if (n.related_work_order_id) setPage('workorders');
+    else setPage('notifications');
+  };
 
   const roleLabel: Record<Role, string> = {
     admin: 'Administrator', supervisor: 'Supervisor', technician: 'Technician',
@@ -152,8 +192,8 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-ink-200 flex items-center justify-between px-6 shrink-0">
-          <div className="flex items-center gap-4 flex-1 max-w-md">
+        <header className="h-16 bg-white border-b border-ink-200 flex items-center justify-between px-4 sm:px-6 shrink-0">
+          <div className="hidden sm:flex items-center gap-4 flex-1 max-w-md">
             <div className="relative w-full">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
               <input
@@ -162,7 +202,7 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
               />
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink-50 border border-ink-200">
               <span className={cn('h-2 w-2 rounded-full', role === 'admin' ? 'bg-primary-500' : role === 'supervisor' ? 'bg-emerald-500' : 'bg-amber-500')} />
               <span className="text-xs font-semibold text-ink-600">{roleLabel[role]} view</span>
@@ -180,30 +220,47 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
               {notifOpen && (
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setNotifOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-pop border border-ink-200 z-40 animate-fade-in overflow-hidden">
+                  <div
+                    className={cn(
+                      'z-40 bg-white rounded-xl shadow-pop border border-ink-200 animate-fade-in overflow-hidden',
+                      'fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80 sm:fixed-none',
+                    )}
+                  >
                     <div className="px-4 py-3 border-b border-ink-100 flex items-center justify-between">
                       <span className="font-semibold text-sm text-ink-900">Notifications</span>
                       <span className="chip bg-primary-50 text-primary-700">{unread} new</span>
                     </div>
-                    <div className="max-h-80 overflow-y-auto">
-                      {notifications.map((n) => (
-                        <div key={n.id} className={cn('px-4 py-3 border-b border-ink-50 hover:bg-ink-50 cursor-pointer flex gap-3', n.unread && 'bg-primary-50/30')}>
-                          <span className={cn('h-2 w-2 rounded-full mt-1.5 shrink-0', n.color)} />
+                    <div className="max-h-[60vh] sm:max-h-80 overflow-y-auto">
+                      {notifs.length === 0 && (
+                        <div className="px-4 py-8 text-center text-sm text-ink-400">No notifications yet.</div>
+                      )}
+                      {notifs.map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => openNotification(n)}
+                          className={cn('px-4 py-3 border-b border-ink-50 hover:bg-ink-50 cursor-pointer flex gap-3', n.unread && 'bg-primary-50/30')}
+                        >
+                          <span className={cn('h-2 w-2 rounded-full mt-1.5 shrink-0', n.color ?? 'bg-primary-500')} />
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-ink-900 truncate">{n.title}</p>
-                            <p className="text-xs text-ink-500 mt-0.5">{n.body}</p>
-                            <p className="text-[11px] text-ink-400 mt-1">{n.time}</p>
+                            {n.body && <p className="text-xs text-ink-500 mt-0.5 line-clamp-2">{n.body}</p>}
+                            <p className="text-[11px] text-ink-400 mt-1">{timeAgo(n.created_at)}</p>
                           </div>
                         </div>
                       ))}
                     </div>
-                    <button className="w-full py-2.5 text-sm font-medium text-primary-600 hover:bg-primary-50">View all notifications</button>
+                    <button
+                      onClick={() => { setPage('notifications'); setNotifOpen(false); }}
+                      className="w-full py-2.5 text-sm font-medium text-primary-600 hover:bg-primary-50"
+                    >
+                      View all notifications
+                    </button>
                   </div>
                 </>
               )}
             </div>
 
-            <button className="h-9 w-9 rounded-lg flex items-center justify-center text-ink-500 hover:bg-ink-100 hover:text-ink-800 transition" title="Help">
+            <button className="hidden sm:flex h-9 w-9 rounded-lg items-center justify-center text-ink-500 hover:bg-ink-100 hover:text-ink-800 transition" title="Help">
               <HelpCircle size={18} />
             </button>
 
@@ -223,13 +280,12 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
               {profileOpen && (
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-pop border border-ink-200 z-40 animate-fade-in overflow-hidden">
+                  <div className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-64 bg-white rounded-xl shadow-pop border border-ink-200 z-40 animate-fade-in overflow-hidden">
                     <div className="px-4 py-3 border-b border-ink-100">
                       <div className="flex items-center gap-3">
                         <Avatar initials={userInitials} color={userAvatarColor} size="md" />
                         <div className="min-w-0">
                           <div className="text-sm font-semibold text-ink-900 truncate">{userName}</div>
-                          <div className="text-xs text-ink-500 truncate">{userEmail}</div>
                           <div className="text-xs text-ink-500 truncate">{userEmail}</div>
                         </div>
                       </div>
@@ -254,7 +310,7 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="p-6 max-w-[1600px] mx-auto animate-fade-in">
+          <div className="p-4 sm:p-6 max-w-[1600px] mx-auto animate-fade-in">
             {children}
           </div>
         </main>

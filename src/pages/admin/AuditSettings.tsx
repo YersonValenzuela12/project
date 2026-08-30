@@ -1,22 +1,97 @@
-import { History, Shield, User, FileText, Settings, Database, Lock, Globe } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Shield, User, FileText, Settings, Database, Lock, Globe, ChevronDown } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, SectionHeader, Avatar, Badge, Tabs } from '@/components/ui';
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { auditLogs, users } from '@/data/mockData';
+import { supabase } from '@/lib/supabase';
+import { generateAuditPdf } from '@/lib/auditReport';
+
+type AuditLogRow = {
+  id: string;
+  actor_name: string;
+  action: string;
+  target: string | null;
+  detail: string | null;
+  ip_address: string | null;
+  created_at: string;
+};
+
+function categorize(action: string): 'Activity' | 'Logins' | 'System' | 'Security' {
+  const a = action.toUpperCase();
+  if (a.includes('LOGIN')) return 'Logins';
+  if (a.includes('BACKUP') || a.includes('SYSTEM')) return 'System';
+  if (a.includes('ROLE') || a.includes('POLICY') || a.includes('PERMISSION') || a.includes('PASSWORD')) return 'Security';
+  return 'Activity';
+}
 
 export function AuditPage() {
-  const [tab, setTab] = useState('Activity');
+  const [tab, setTab] = useState<'Activity' | 'Logins' | 'System' | 'Security'>('Activity');
+  const [logs, setLogs] = useState<AuditLogRow[]>([]);
+  const [profilesByName, setProfilesByName] = useState<Map<string, { initials: string; avatar_color: string }>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      const { data: logData } = await supabase
+        .from('audit_logs')
+        .select('id, actor_name, action, target, detail, ip_address, created_at')
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('full_name, initials, avatar_color');
+
+      if (!cancelled) {
+        setLogs(logData ?? []);
+        setProfilesByName(new Map((profileData ?? []).map((p: any) => [p.full_name, p])));
+        setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  const filteredLogs = useMemo(() => logs.filter((l) => categorize(l.action) === tab), [logs, tab]);
+
+  async function handleExport(range: 'week' | 'month') {
+    setExportOpen(false);
+    setExporting(true);
+    try {
+      await generateAuditPdf(range, tab);
+    } catch (err) {
+      console.error('Export error:', err);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div>
       <PageHeader
         title="Audit Logs"
         subtitle="Immutable record of all system actions for compliance"
         breadcrumbs={['Home', 'Administrator', 'Audit Logs']}
-        actions={<button className="btn-secondary"><Database size={15} /> Export Log</button>}
+        actions={
+          <div className="relative">
+            <button className="btn-secondary" onClick={() => setExportOpen((v) => !v)} disabled={exporting}>
+              <Database size={15} /> {exporting ? 'Generating…' : 'Export Log'} <ChevronDown size={14} />
+            </button>
+            {exportOpen && (
+              <div className="absolute right-0 mt-2 w-44 bg-white border border-ink-100 rounded-lg shadow-card-md z-10 overflow-hidden">
+                <button className="w-full text-left px-4 py-2.5 text-sm hover:bg-ink-50" onClick={() => handleExport('week')}>Última semana</button>
+                <button className="w-full text-left px-4 py-2.5 text-sm hover:bg-ink-50" onClick={() => handleExport('month')}>Este mes</button>
+              </div>
+            )}
+          </div>
+        }
       />
       <Card pad={false} className="overflow-hidden">
-        <div className="px-5 pt-4"><Tabs tabs={['Activity', 'Logins', 'System', 'Security']} active={tab} onChange={setTab} /></div>
+        <div className="px-5 pt-4"><Tabs tabs={['Activity', 'Logins', 'System', 'Security']} active={tab} onChange={(t: any) => setTab(t)} /></div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px]">
             <thead className="bg-ink-50/50 border-y border-ink-100">
@@ -26,21 +101,25 @@ export function AuditPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-50">
-              {auditLogs.map((l) => {
-                const u = users.find((x) => x.name === l.actor);
+              {loading && <tr><td className="td text-ink-400" colSpan={6}>Loading…</td></tr>}
+              {!loading && filteredLogs.length === 0 && (
+                <tr><td className="td text-ink-400" colSpan={6}>No records in this category</td></tr>
+              )}
+              {filteredLogs.map((l) => {
+                const p = profilesByName.get(l.actor_name);
                 return (
                   <tr key={l.id} className="hover:bg-ink-50/40">
                     <td className="td">
                       <div className="flex items-center gap-2.5">
-                        {u ? <Avatar initials={u.initials} color={u.avatarColor} size="sm" /> : <span className="h-8 w-8 rounded-full bg-ink-200 flex items-center justify-center"><Shield size={14} className="text-ink-500" /></span>}
-                        <span className="font-medium text-ink-900">{l.actor}</span>
+                        {p ? <Avatar initials={p.initials} color={p.avatar_color} size="sm" /> : <span className="h-8 w-8 rounded-full bg-ink-200 flex items-center justify-center"><Shield size={14} className="text-ink-500" /></span>}
+                        <span className="font-medium text-ink-900">{l.actor_name}</span>
                       </div>
                     </td>
                     <td className="td"><Badge className="bg-ink-100 text-ink-700 font-mono text-[11px]">{l.action}</Badge></td>
-                    <td className="td text-ink-700">{l.target}</td>
-                    <td className="td text-ink-500">{l.detail}</td>
-                    <td className="td font-mono text-xs text-ink-500">{l.ip}</td>
-                    <td className="td text-ink-500 whitespace-nowrap">{l.time}</td>
+                    <td className="td text-ink-700">{l.target ?? '—'}</td>
+                    <td className="td text-ink-500">{l.detail ?? '—'}</td>
+                    <td className="td font-mono text-xs text-ink-500">{l.ip_address ?? '—'}</td>
+                    <td className="td text-ink-500 whitespace-nowrap">{new Date(l.created_at).toLocaleString()}</td>
                   </tr>
                 );
               })}

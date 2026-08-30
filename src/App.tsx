@@ -12,7 +12,7 @@ import { AuditPage, SettingsPage } from '@/pages/admin/AuditSettings';
 import { SupervisorDashboard } from '@/pages/supervisor/SupervisorDashboard';
 import { CalendarPage } from '@/pages/supervisor/CalendarPage';
 import { TechnicianDashboard } from '@/pages/technician/TechnicianDashboard';
-import { FormsPage, HistoryPage } from '@/pages/technician/FormsHistory';
+import { FormsPage, HistoryPage, AdminFormsPage } from '@/pages/technician/FormsHistory';
 import { WorkOrdersPage } from '@/pages/WorkOrdersPage';
 import { WorkOrderDetail } from '@/pages/WorkOrderDetail';
 import { TechniciansPage } from '@/pages/common/TechniciansPage';
@@ -80,6 +80,8 @@ function App() {
         return <SettingsPage />;
       case 'forms':
         return <FormsPage />;
+      case 'form_requests':
+        return <AdminFormsPage />;
       case 'history':
         return <HistoryPage />;
       case 'profile':

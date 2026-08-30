@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Modal, Avatar, Badge } from '@/components/ui';
 import { supabase } from '@/lib/supabase';
+import { logActivity } from '@/lib/activityLog';
 
 interface PersonOption {
   id: string;
@@ -74,6 +75,13 @@ export function WorkOrderFormModal({
     if (!client || !site || !scheduledDate) { setError('Client, site, and scheduled date are required.'); return; }
     setSaving(true);
 
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+    let actorName = 'Usuario';
+    if (currentUser) {
+  const { data: currentProfile } = await supabase.from('profiles').select('full_name').eq('id', currentUser.id).single();
+      actorName = currentProfile?.full_name ?? currentUser.email ?? 'Usuario';
+    }
+
     const primaryTechnician = people.find((p) => selectedIds.includes(p.id) && p.role === 'technician');
 
     const payload = {
@@ -117,7 +125,27 @@ export function WorkOrderFormModal({
       }));
       const { error: assignError } = await supabase.from('work_order_assignees').insert(rows);
       if (assignError) { setSaving(false); setError(`Saved, but assigning people failed: ${assignError.message}`); return; }
+
+      // Notify each assigned person
+      const { data: { user: caller } } = await supabase.auth.getUser();
+      const notifRows = selectedIds.map((user_id) => ({
+        user_id,
+        type: 'work_order_assigned',
+        title: isEdit ? `Work order updated: ${client}` : `New work order assigned: ${client}`,
+        body: `${site} · ${scheduledDate} at ${scheduledTime}`,
+        unread: true,
+        actor_id: caller?.id ?? null,
+        related_work_order_id: orderId,
+      }));
+      await supabase.from('notifications').insert(notifRows);
     }
+
+    await logActivity({
+      actorName,
+      action: isEdit ? 'actualizó una orden de trabajo' : 'creó una orden de trabajo',
+      target: 'work_order',
+      detail: `${client} · ${site} · ${serviceType}`,
+    });
 
     setSaving(false);
     onSaved();
