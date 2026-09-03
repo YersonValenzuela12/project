@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Car, HeartPulse, MessageSquareWarning, Receipt, FileText, PenLine, Check, ChevronLeft, Download } from 'lucide-react';
+import { Car, HeartPulse, MessageSquareWarning, Receipt, FileText, PenLine, Check, ChevronLeft, Download, FileImage } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, SectionHeader, Badge, Modal, Tabs } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -260,57 +260,130 @@ function FormBody({
     </div>
   );
 }
+const SERVICE_LABELS_ES: Record<string, string> = {
+  CCTV: 'CCTV', 'Access Control': 'Control de Acceso', 'Fire Alarm': 'Alarma contra Incendio',
+  'Fire Water': 'Alarma de Agua', BMS: 'BMS', 'Electronic Security': 'Seguridad Electrónica',
+};
+
+function isImageFile(name: string) {
+  return /\.(png|jpe?g|gif|webp)$/i.test(name);
+}
 
 export function HistoryPage() {
+  const { profile } = useAuth();
+  const [completedOrders, setCompletedOrders] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
+  const [photos, setPhotos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!profile) return;
+    (async () => {
+      setLoading(true);
+
+      const { data: primary } = await supabase.from('work_orders').select('*').eq('technician_id', profile.id).eq('status', 'completed');
+      const { data: assigneeRows } = await supabase.from('work_order_assignees').select('work_order_id').eq('user_id', profile.id);
+      const assignedIds = (assigneeRows ?? []).map((r: any) => r.work_order_id);
+      const { data: viaAssignment } = assignedIds.length > 0
+        ? await supabase.from('work_orders').select('*').in('id', assignedIds).eq('status', 'completed')
+        : { data: [] as any[] };
+      const mergedOrders = [...(primary ?? [])];
+      (viaAssignment ?? []).forEach((w: any) => { if (!mergedOrders.find((m) => m.id === w.id)) mergedOrders.push(w); });
+      mergedOrders.sort((a, b) => (b.scheduled_date ?? '').localeCompare(a.scheduled_date ?? ''));
+      setCompletedOrders(mergedOrders);
+
+      const { data: docs } = await supabase
+        .from('documents')
+        .select('id, name, size, file_path, created_at')
+        .eq('uploaded_by', profile.id)
+        .order('created_at', { ascending: false });
+
+      setReports((docs ?? []).filter((d: any) => !isImageFile(d.name)));
+      setPhotos((docs ?? []).filter((d: any) => isImageFile(d.name)));
+
+      setLoading(false);
+    })();
+  }, [profile?.id]);
+
+  const publicUrlFor = (path: string) => supabase.storage.from('Documents').getPublicUrl(path).data.publicUrl;
+
+  const handleDownload = (path: string, name: string) => {
+    const a = document.createElement('a');
+    a.href = publicUrlFor(path);
+    a.download = name;
+    a.target = '_blank';
+    a.click();
+  };
+
+  if (loading) {
+    return (
+      <div>
+        <PageHeader title="Mi Historial" subtitle="Órdenes completadas, reportes y documentos subidos" breadcrumbs={['Inicio', 'Técnico', 'Historial']} />
+        <Card><div className="p-8 text-center text-sm text-ink-500">Cargando historial…</div></Card>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <PageHeader title="My History" subtitle="Completed work orders, reports, and submitted documents" breadcrumbs={['Home', 'Technician', 'History']} />
+      <PageHeader title="Mi Historial" subtitle="Órdenes completadas, reportes y documentos subidos" breadcrumbs={['Inicio', 'Técnico', 'Historial']} />
 
       <Card pad={false} className="overflow-hidden mb-6">
-        <div className="p-5 pb-3"><SectionHeader title="Completed Work Orders" subtitle={`${technicianHistory.length} jobs this quarter`} /></div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px]">
-            <thead className="bg-ink-50/50 border-y border-ink-100">
-              <tr><th className="th">Ordenes de servicio</th><th className="th">Clientes</th><th className="th">Servicios</th><th className="th">Fecha</th><th className="th">Estado</th><th className="th">Calificación</th></tr>
-            </thead>
-            <tbody className="divide-y divide-ink-50">
-              {technicianHistory.map((h) => (
-                <tr key={h.id} className="hover:bg-ink-50/40">
-                  <td className="td font-mono text-xs font-semibold text-primary-700">{h.code}</td>
-                  <td className="td font-medium text-ink-900">{h.client}</td>
-                  <td className="td text-ink-600">{h.type}</td>
-                  <td className="td text-ink-500">{h.date}</td>
-                  <td className="td"><Badge className={statusColor('completed')}>{statusLabel('completed')}</Badge></td>
-                  <td className="td"><span className="text-amber-400">{'★'.repeat(h.rating)}</span><span className="text-ink-200">{'★'.repeat(5 - h.rating)}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <div className="p-5 pb-3"><SectionHeader title="Órdenes de Trabajo Completadas" subtitle={`${completedOrders.length} trabajo${completedOrders.length === 1 ? '' : 's'}`} /></div>
+        {completedOrders.length === 0 ? (
+          <div className="p-8 text-center text-sm text-ink-500">Aún no tienes órdenes completadas.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px]">
+              <thead className="bg-ink-50/50 border-y border-ink-100">
+                <tr><th className="th">Orden</th><th className="th">Cliente</th><th className="th">Servicio</th><th className="th">Fecha</th><th className="th">Estado</th></tr>
+              </thead>
+              <tbody className="divide-y divide-ink-50">
+                {completedOrders.map((h) => (
+                  <tr key={h.id} className="hover:bg-ink-50/40">
+                    <td className="td font-mono text-xs font-semibold text-primary-700">{h.code}</td>
+                    <td className="td font-medium text-ink-900">{h.client}</td>
+                    <td className="td text-ink-600">{SERVICE_LABELS_ES[h.service_type] ?? h.service_type}</td>
+                    <td className="td text-ink-500">{h.scheduled_date ? new Date(`${h.scheduled_date}T00:00:00`).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' }) : '—'}</td>
+                    <td className="td"><Badge className="bg-emerald-50 text-emerald-700">Completado</Badge></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card pad={false}>
-          <div className="p-5 pb-3"><SectionHeader title="Uploaded Reports" /></div>
-          <div className="divide-y divide-ink-50">
-            {['WO-2026-1006 — CCTV PM Report.pdf', 'WO-2026-1007 — Sensor Replacement.pdf', 'WO-2026-0987 — Badge Reader Fix.pdf'].map((r, i) => (
-              <div key={i} className="flex items-center gap-3 px-5 py-3 hover:bg-ink-50/40">
-                <div className="h-9 w-9 rounded-lg bg-red-50 text-red-600 flex items-center justify-center"><FileText size={16} /></div>
-                <div className="flex-1 min-w-0"><div className="text-sm font-medium text-ink-900 truncate">{r}</div><div className="text-xs text-ink-500">PDF · 1.2 MB</div></div>
-                <button className="h-8 w-8 rounded-md hover:bg-ink-100 flex items-center justify-center text-ink-500"><Download size={15} /></button>
-              </div>
-            ))}
-          </div>
+          <div className="p-5 pb-3"><SectionHeader title="Reportes Subidos" /></div>
+          {reports.length === 0 ? (
+            <div className="px-5 py-8 text-center text-sm text-ink-400">Aún no has subido reportes.</div>
+          ) : (
+            <div className="divide-y divide-ink-50">
+              {reports.map((r) => (
+                <div key={r.id} className="flex items-center gap-3 px-5 py-3 hover:bg-ink-50/40">
+                  <div className="h-9 w-9 rounded-lg bg-red-50 text-red-600 flex items-center justify-center"><FileText size={16} /></div>
+                  <div className="flex-1 min-w-0"><div className="text-sm font-medium text-ink-900 truncate">{r.name}</div><div className="text-xs text-ink-500">{r.size}</div></div>
+                  <button onClick={() => handleDownload(r.file_path, r.name)} className="h-8 w-8 rounded-md hover:bg-ink-100 flex items-center justify-center text-ink-500"><Download size={15} /></button>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
         <Card pad={false}>
-          <div className="p-5 pb-3"><SectionHeader title="Uploaded Photos" /></div>
-          <div className="grid grid-cols-3 gap-2 p-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="aspect-square rounded-lg overflow-hidden bg-ink-100">
-                <img src="https://images.pexels.com/photos/264819/pexels-photo-264819.jpeg?auto=compress&cs=tinysrgb&w=200" alt="Job photo" className="h-full w-full object-cover" />
-              </div>
-            ))}
-          </div>
+          <div className="p-5 pb-3"><SectionHeader title="Fotos Subidas" /></div>
+          {photos.length === 0 ? (
+            <div className="px-5 py-8 text-center text-sm text-ink-400">Aún no has subido fotos.</div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2 p-4">
+              {photos.map((p) => (
+                <a key={p.id} href={publicUrlFor(p.file_path)} target="_blank" rel="noreferrer" className="aspect-square rounded-lg overflow-hidden bg-ink-100 block">
+                  <img src={publicUrlFor(p.file_path)} alt={p.name} className="h-full w-full object-cover" />
+                </a>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
     </div>

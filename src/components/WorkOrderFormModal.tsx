@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Modal, Avatar, Badge } from '@/components/ui';
 import { supabase } from '@/lib/supabase';
-import { logActivity } from '@/lib/activityLog';
 
 interface PersonOption {
   id: string;
@@ -9,6 +8,13 @@ interface PersonOption {
   role: string;
   initials: string;
   avatar_color: string;
+}
+
+interface SiteOption {
+  id: string;
+  client: string;
+  site_name: string;
+  address: string | null;
 }
 
 const SERVICE_TYPES = ['CCTV', 'Access Control', 'Fire Alarm', 'Fire Water', 'BMS', 'Electronic Security'];
@@ -29,6 +35,14 @@ export function WorkOrderFormModal({
   const [client, setClient] = useState(order?.client ?? '');
   const [site, setSite] = useState(order?.site ?? '');
   const [address, setAddress] = useState(order?.address ?? '');
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(order?.site_id ?? null);
+  const [sites, setSites] = useState<SiteOption[]>([]);
+  const [siteQuery, setSiteQuery] = useState('');
+  const [showAddSite, setShowAddSite] = useState(false);
+  const [newClient, setNewClient] = useState('');
+  const [newSiteName, setNewSiteName] = useState('');
+  const [newAddress, setNewAddress] = useState('');
+  const [savingSite, setSavingSite] = useState(false);
   const [serviceType, setServiceType] = useState(order?.service_type ?? SERVICE_TYPES[0]);
   const [priority, setPriority] = useState(order?.priority ?? 'medium');
   const [status, setStatus] = useState(order?.status ?? 'open');
@@ -51,6 +65,12 @@ export function WorkOrderFormModal({
         .order('full_name');
       if (data) setPeople(data as PersonOption[]);
 
+      const { data: siteRows } = await supabase
+        .from('sites')
+        .select('id, client, site_name, address')
+        .order('client');
+      if (siteRows) setSites(siteRows as SiteOption[]);
+
       if (isEdit) {
         const preselected = new Set<string>();
         if (order.technician_id) preselected.add(order.technician_id);
@@ -70,17 +90,53 @@ export function WorkOrderFormModal({
 
   const genCode = () => `WO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
+  const pickSite = (s: SiteOption) => {
+    setSelectedSiteId(s.id);
+    setClient(s.client);
+    setSite(s.site_name);
+    setAddress(s.address ?? '');
+    setSiteQuery('');
+  };
+
+  const changeSite = () => {
+    setSelectedSiteId(null);
+    setClient('');
+    setSite('');
+    setAddress('');
+  };
+
+  const createSite = async () => {
+    if (!newClient || !newSiteName) { setError('Client and site name are required to add a new site.'); return; }
+    setError(null);
+    setSavingSite(true);
+    const { data: created, error: siteError } = await supabase
+      .from('sites')
+      .insert({ client: newClient, site_name: newSiteName, address: newAddress || null })
+      .select()
+      .single();
+    setSavingSite(false);
+    if (siteError || !created) { setError(siteError?.message || 'Unable to create site.'); return; }
+    const newSite: SiteOption = created;
+    setSites((prev) => [...prev, newSite].sort((a, b) => a.client.localeCompare(b.client)));
+    pickSite(newSite);
+    setShowAddSite(false);
+    setNewClient(''); setNewSiteName(''); setNewAddress('');
+  };
+
+  const filteredSites = sites.filter((s) =>
+    !siteQuery ||
+    s.client.toLowerCase().includes(siteQuery.toLowerCase()) ||
+    s.site_name.toLowerCase().includes(siteQuery.toLowerCase()),
+  );
+  const groupedSites = filteredSites.reduce((acc: Record<string, SiteOption[]>, s) => {
+    (acc[s.client] ??= []).push(s);
+    return acc;
+  }, {});
+
   const submit = async () => {
     setError(null);
     if (!client || !site || !scheduledDate) { setError('Client, site, and scheduled date are required.'); return; }
     setSaving(true);
-
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
-    let actorName = 'Usuario';
-    if (currentUser) {
-  const { data: currentProfile } = await supabase.from('profiles').select('full_name').eq('id', currentUser.id).single();
-      actorName = currentProfile?.full_name ?? currentUser.email ?? 'Usuario';
-    }
 
     const primaryTechnician = people.find((p) => selectedIds.includes(p.id) && p.role === 'technician');
 
@@ -88,6 +144,7 @@ export function WorkOrderFormModal({
       client,
       site,
       address,
+      site_id: selectedSiteId,
       service_type: serviceType,
       priority,
       status,
@@ -140,13 +197,6 @@ export function WorkOrderFormModal({
       await supabase.from('notifications').insert(notifRows);
     }
 
-    await logActivity({
-      actorName,
-      action: isEdit ? 'actualizó una orden de trabajo' : 'creó una orden de trabajo',
-      target: 'work_order',
-      detail: `${client} · ${site} · ${serviceType}`,
-    });
-
     setSaving(false);
     onSaved();
   };
@@ -166,9 +216,59 @@ export function WorkOrderFormModal({
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <div><label className="label">Client</label><input className="input" value={client} onChange={(e) => setClient(e.target.value)} placeholder="Harbor Gate Logistics" /></div>
-        <div><label className="label">Site</label><input className="input" value={site} onChange={(e) => setSite(e.target.value)} placeholder="Warehouse 4 — Dock A" /></div>
-        <div className="col-span-2"><label className="label">Address</label><input className="input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="1820 Maritime Blvd, Oakland, CA" /></div>
+        <div className="col-span-2">
+          <label className="label">Client / Site</label>
+
+          {client && site && !showAddSite ? (
+            <div className="rounded-lg border border-ink-200 bg-ink-50 px-3 py-2.5">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <div className="text-sm font-medium text-ink-900">{client}</div>
+                  <div className="text-xs text-ink-500">{site}</div>
+                </div>
+                <button type="button" onClick={changeSite} className="text-xs font-semibold text-primary-600 hover:text-primary-700">Change</button>
+              </div>
+              <input className="input h-9" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address / reference (floor, suite…)" />
+            </div>
+          ) : showAddSite ? (
+            <div className="rounded-lg border border-ink-200 p-3 space-y-2">
+              <input className="input" value={newClient} onChange={(e) => setNewClient(e.target.value)} placeholder="Client" />
+              <input className="input" value={newSiteName} onChange={(e) => setNewSiteName(e.target.value)} placeholder="Site / building name" />
+              <input className="input" value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder="Full address" />
+              <div className="flex gap-2 pt-1">
+                <button type="button" className="btn-secondary flex-1 h-9 text-xs" onClick={() => setShowAddSite(false)} disabled={savingSite}>Cancel</button>
+                <button type="button" className="btn-primary flex-1 h-9 text-xs" onClick={createSite} disabled={savingSite}>{savingSite ? 'Saving…' : 'Save and use'}</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <input className="input mb-2" value={siteQuery} onChange={(e) => setSiteQuery(e.target.value)} placeholder="Search client or building…" />
+              <div className="border border-ink-200 rounded-lg max-h-48 overflow-y-auto">
+                {Object.entries(groupedSites).map(([clientName, group]) => (
+                  <div key={clientName}>
+                    <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-ink-400 bg-ink-50/70">{clientName}</div>
+                    {group.map((s) => (
+                      <button
+                        type="button"
+                        key={s.id}
+                        onClick={() => pickSite(s)}
+                        className="w-full text-left px-3 py-2 hover:bg-ink-50 flex items-center justify-between border-b border-ink-50 last:border-0"
+                      >
+                        <div>
+                          <div className="text-sm text-ink-800">{s.site_name}</div>
+                          {s.address && <div className="text-xs text-ink-500">{s.address}</div>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+                {filteredSites.length === 0 && <div className="px-3 py-4 text-sm text-ink-400 text-center">No sites found.</div>}
+              </div>
+              <button type="button" className="btn-secondary w-full mt-2 h-9 text-xs" onClick={() => setShowAddSite(true)}>+ Add new site</button>
+            </>
+          )}
+        </div>
+
         <div>
           <label className="label">Service type</label>
           <select className="input" value={serviceType} onChange={(e) => setServiceType(e.target.value)}>
