@@ -19,8 +19,8 @@ function formTypeFor(name: string) {
 }
 
 function formLabelFor(type: string) {
-  if (type === 'mobility') return 'Mobility Form';
-  if (type === 'medical_leave') return 'Medical Leave Form';
+  if (type === 'mobility') return 'Mobilidad Form';
+  if (type === 'medical_leave') return 'Medico Leave Form';
   if (type === 'complaint') return 'Complaint Form';
   if (type === 'expense_claim') return 'Expense Claim';
   return type;
@@ -204,40 +204,40 @@ function FormBody({
       {name === 'Mobility Form' && (
         <>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Vehicle *</label><input className="input" value={v('vehicle')} onChange={set('vehicle')} placeholder="Ford — ST-2841" /></div>
-            <div><label className="label">Period *</label><input className="input" value={v('period')} onChange={set('period')} placeholder="Aug 1 – Aug 7, 2026" /></div>
-            <div><label className="label">Start mileage *</label><input className="input" value={v('start_mileage')} onChange={set('start_mileage')} placeholder="48,210 km" /></div>
-            <div><label className="label">End mileage *</label><input className="input" value={v('end_mileage')} onChange={set('end_mileage')} placeholder="48,XXX km" /></div>
-          </div>
-          <div><label className="label">Routes traveled</label><textarea className="input min-h-[80px]" value={v('routes')} onChange={set('routes')} placeholder="Full details…" /></div>
+            <div><label className="label">Tipo de movilidad *</label><input className="input" value={v('vehicle')} onChange={set('vehicle')} placeholder="uber-propio-colectivo" /></div>
+            <div><label className="label">tiempo *</label><input className="input" value={v('period')} onChange={set('period')} placeholder="2hr, 2026" /></div>
+            <div><label className="label">Inicio  *</label><input className="input" value={v('start_mileage')} onChange={set('start_mileage')} placeholder="san isidro" /></div>
+            <div><label className="label">llegada *</label><input className="input" value={v('end_mileage')} onChange={set('end_mileage')} placeholder="surco" /></div>
+          </div> 
+          <div><label className="label">Tipo de viaje</label><textarea className="input min-h-[80px]" value={v('routes')} onChange={set('routes')} placeholder="Detalla si se llevo herramientas…" /></div>
         </>
       )}
       {name === 'Medical Leave Form' && (
         <>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Leave type *</label>
+              <label className="label">Tipo de baja *</label>
               <select className="input" value={v('leave_type', 'Sick leave')} onChange={set('leave_type')}>
-                <option>Sick leave</option><option>Medical procedure</option><option>Recovery</option>
+                <option>Tipo de baja</option><option>Procedimiento Medico</option><option>Recupercación</option>
               </select>
             </div>
-            <div><label className="label">Days requested *</label><input className="input" value={v('days')} onChange={set('days')} placeholder="3" /></div>
-            <div><label className="label">From *</label><input type="date" className="input" value={v('from_date')} onChange={set('from_date')} /></div>
-            <div><label className="label">To *</label><input type="date" className="input" value={v('to_date')} onChange={set('to_date')} /></div>
+            <div><label className="label">Dias de Recuperacion*</label><input className="input" value={v('days')} onChange={set('days')} placeholder="3" /></div>
+            <div><label className="label">Inicio *</label><input type="date" className="input" value={v('from_date')} onChange={set('from_date')} /></div>
+            <div><label className="label">Salida *</label><input type="date" className="input" value={v('to_date')} onChange={set('to_date')} /></div>
           </div>
-          <div><label className="label">Reason / notes</label><textarea className="input min-h-[80px]" value={v('notes')} onChange={set('notes')} placeholder="Brief description…" /></div>
+          <div><label className="label">Razon / Notas</label><textarea className="input min-h-[80px]" value={v('notes')} onChange={set('notes')} placeholder="Breve descripcion…" /></div>
         </>
       )}
       {(name === 'Complaint Form' || name === 'Expense Claim') && (
         <>
-          <div><label className="label">Subject *</label><input className="input" value={v('subject')} onChange={set('subject')} placeholder="Brief subject" /></div>
-          <div><label className="label">Date *</label><input type="date" className="input" value={v('date')} onChange={set('date')} /></div>
-          <div><label className="label">Details *</label><textarea className="input min-h-[120px]" value={v('details')} onChange={set('details')} placeholder="Provide full details…" /></div>
+          <div><label className="label">Tema *</label><input className="input" value={v('subject')} onChange={set('subject')} placeholder="Brief subject" /></div>
+          <div><label className="label">Fecha *</label><input type="date" className="input" value={v('date')} onChange={set('date')} /></div>
+          <div><label className="label">Detalles *</label><textarea className="input min-h-[120px]" value={v('details')} onChange={set('details')} placeholder="Detalles de la queja…" /></div>
           {name === 'Expense Claim' && (
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Amount *</label><input className="input" value={v('amount')} onChange={set('amount')} placeholder="S/. 0.00" /></div>
+              <div><label className="label">Costo *</label><input className="input" value={v('amount')} onChange={set('amount')} placeholder="S/. 0.00" /></div>
               <div>
-                <label className="label">Category *</label>
+                <label className="label">Categoria *</label>
                 <select className="input" value={v('category', 'Materials')} onChange={set('category')}>
                   <option>Materials</option><option>Travel</option><option>Equipment</option><option>Other</option>
                 </select>
@@ -271,7 +271,7 @@ export function HistoryPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[700px]">
             <thead className="bg-ink-50/50 border-y border-ink-100">
-              <tr><th className="th">Work order</th><th className="th">Client</th><th className="th">Service</th><th className="th">Date</th><th className="th">Status</th><th className="th">Rating</th></tr>
+              <tr><th className="th">Ordenes de servicio</th><th className="th">Clientes</th><th className="th">Servicios</th><th className="th">Fecha</th><th className="th">Estado</th><th className="th">Calificación</th></tr>
             </thead>
             <tbody className="divide-y divide-ink-50">
               {technicianHistory.map((h) => (

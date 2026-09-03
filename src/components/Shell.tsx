@@ -94,6 +94,7 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [notifs, setNotifs] = useState<any[]>([]);
   const { profile } = useAuth();
   const userName = profile?.full_name ?? 'User';
@@ -107,6 +108,9 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
     if (!profile) return;
     fetchNotifs();
   }, [profile?.id]);
+
+  // Close the mobile drawer whenever the page changes (e.g. after clicking a nav item)
+  useEffect(() => { setMobileOpen(false); }, [page]);
 
   const fetchNotifs = async () => {
     if (!profile) return;
@@ -137,10 +141,22 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
 
   return (
     <div className="flex h-screen bg-ink-100 overflow-hidden">
+      {/* Mobile backdrop — tap to close the drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setMobileOpen(false)} />
+      )}
+
       {/* Sidebar */}
-      <aside className={cn('flex flex-col bg-white border-r border-ink-200 transition-all duration-200 shrink-0', collapsed ? 'w-16' : 'w-60')}>
-        <div className={cn('h-16 flex items-center border-b border-ink-100 shrink-0', collapsed ? 'justify-center px-2' : 'px-4')}>
-          {collapsed ? <Logo showText={false} /> : <Logo />}
+      <aside
+        className={cn(
+          'flex flex-col bg-white border-r border-ink-200 transition-all duration-200 shrink-0 z-50',
+          'fixed inset-y-0 left-0 w-60 md:static',
+          collapsed ? 'md:w-16' : 'md:w-60',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+        )}
+      >
+        <div className={cn('h-16 flex items-center border-b border-ink-100 shrink-0', collapsed ? 'md:justify-center md:px-2 px-4' : 'px-4')}>
+          {collapsed ? <><span className="md:hidden"><Logo /></span><span className="hidden md:block"><Logo showText={false} /></span></> : <Logo />}
         </div>
         <nav className="flex-1 overflow-y-auto py-3 no-scrollbar">
           {collapsed ? (
@@ -149,10 +165,11 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
                 <button
                   key={item.page}
                   onClick={() => setPage(item.page)}
-                  className={cn('nav-item justify-center', page === item.page && 'nav-item-active')}
+                  className={cn('nav-item md:justify-center', page === item.page && 'nav-item-active')}
                   title={item.label}
                 >
                   <item.icon size={18} />
+                  <span className="md:hidden truncate">{item.label}</span>
                 </button>
               ))}
             </div>
@@ -178,13 +195,21 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
             </div>
           )}
         </nav>
-        <div className={cn('border-t border-ink-100 p-3', collapsed && 'px-2')}>
+        <div className={cn('border-t border-ink-100 p-3 space-y-1', collapsed && 'md:px-2')}>
           <button
             onClick={() => setCollapsed((c) => !c)}
-            className="nav-item w-full justify-center text-ink-400 hover:text-ink-700"
+            className="nav-item w-full justify-center text-ink-400 hover:text-ink-700 hidden md:flex"
             title={collapsed ? 'Expand' : 'Collapse'}
           >
             <span className="text-base">{collapsed ? '›' : '‹ Sidebar'}</span>
+          </button>
+          <button
+            onClick={onLogout}
+            className={cn('nav-item w-full text-red-600 hover:bg-red-50', collapsed && 'md:justify-center')}
+            title="Sign out"
+          >
+            <LogOut size={18} className="shrink-0" />
+            <span className={cn(collapsed && 'md:hidden')}>Sign out</span>
           </button>
         </div>
       </aside>
@@ -193,13 +218,22 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className="h-16 bg-white border-b border-ink-200 flex items-center justify-between px-4 sm:px-6 shrink-0">
-          <div className="hidden sm:flex items-center gap-4 flex-1 max-w-md">
-            <div className="relative w-full">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-              <input
-                placeholder="Search work orders, clients, technicians…"
-                className="w-full h-9 pl-9 pr-4 rounded-lg bg-ink-100 border border-transparent text-sm placeholder:text-ink-400 focus:outline-none focus:bg-white focus:border-primary-300 focus:ring-2 focus:ring-primary-500/20 transition"
-              />
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="md:hidden h-9 w-9 rounded-lg flex items-center justify-center hover:bg-ink-100 shrink-0"
+              title="Open menu"
+            >
+              <Logo showText={false} />
+            </button>
+            <div className="hidden sm:flex items-center gap-4 flex-1 max-w-md">
+              <div className="relative w-full">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
+                <input
+                  placeholder="Search work orders, clients, technicians…"
+                  className="w-full h-9 pl-9 pr-4 rounded-lg bg-ink-100 border border-transparent text-sm placeholder:text-ink-400 focus:outline-none focus:bg-white focus:border-primary-300 focus:ring-2 focus:ring-primary-500/20 transition"
+                />
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">

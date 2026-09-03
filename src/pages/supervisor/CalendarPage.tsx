@@ -18,7 +18,7 @@ function getWeekDays(offset: number) {
   const monday = new Date(now);
   monday.setDate(now.getDate() + diffToMonday + offset * 7);
   const days = [];
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
     days.push({
@@ -35,6 +35,84 @@ function weekRangeLabel(days: { iso: string }[]) {
   const last = new Date(days[days.length - 1].iso);
   const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   return `${first.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${fmt(last)}`;
+}
+
+function useSelectedDay(weekOffset: number, days: { iso: string }[]) {
+  const [selectedDayIdx, setSelectedDayIdx] = useState(0);
+  useEffect(() => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const idx = days.findIndex((d) => d.iso === todayIso);
+    setSelectedDayIdx(idx >= 0 ? idx : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekOffset]);
+  return [selectedDayIdx, setSelectedDayIdx] as const;
+}
+
+function DayChips({
+  days, selectedDayIdx, setSelectedDayIdx, ordersByDay,
+}: {
+  days: { iso: string; label: string; dateLabel: string }[];
+  selectedDayIdx: number;
+  setSelectedDayIdx: (i: number) => void;
+  ordersByDay: (iso: string) => any[];
+}) {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  return (
+    <div className="flex md:hidden gap-1.5 mb-4">
+      {days.map((d, i) => {
+        const count = ordersByDay(d.iso).length;
+        const isToday = d.iso === todayIso;
+        const active = selectedDayIdx === i;
+        return (
+          <button
+            key={d.iso}
+            onClick={() => setSelectedDayIdx(i)}
+            className={cn(
+              'flex-1 rounded-lg px-1 py-2 text-center border transition',
+              active ? 'bg-primary-600 border-primary-600 text-white' : 'bg-white border-ink-200 text-ink-700',
+            )}
+          >
+            <div className={cn('text-[10px] font-medium', active ? 'text-white/80' : 'text-ink-400')}>{d.label}</div>
+            <div className={cn('text-sm font-bold', isToday && !active && 'text-primary-600')}>{d.dateLabel.split(' ')[1]}</div>
+            <div className={cn('h-1 w-1 rounded-full mx-auto mt-1', count > 0 ? (active ? 'bg-white' : 'bg-primary-500') : 'bg-transparent')} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function AgendaList({ orders, onSelect, techMap }: { orders: any[]; onSelect: (w: any) => void; techMap?: Map<string, any> }) {
+  const sorted = [...orders].sort((a, b) => (a.scheduled_time ?? '').localeCompare(b.scheduled_time ?? ''));
+  if (sorted.length === 0) {
+    return <div className="md:hidden p-8 text-center text-sm text-ink-400 bg-white rounded-xl border border-ink-100">No jobs scheduled this day.</div>;
+  }
+  return (
+    <div className="md:hidden space-y-2">
+      {sorted.map((w) => {
+        const tech = techMap && w.technician_id ? techMap.get(w.technician_id) : null;
+        return (
+          <button
+            key={w.id}
+            onClick={() => onSelect(w)}
+            className="w-full text-left bg-white border border-ink-100 rounded-xl p-3 flex gap-3 hover:border-primary-300 transition"
+          >
+            <span className={cn('w-1.5 rounded-full shrink-0', serviceBg(w.service_type))} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-bold text-ink-900">{w.scheduled_time}</span>
+                <Badge className={cn('text-[10px]', priorityColor(w.priority))}>{w.priority}</Badge>
+              </div>
+              <div className="text-sm font-medium text-ink-800 truncate mt-0.5">{w.client}</div>
+              <div className="text-xs text-ink-500 truncate">
+                {w.service_type}{tech ? ` · ${tech.full_name}` : techMap ? ' · Unassigned' : ''}
+              </div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export function CalendarPage({
@@ -60,6 +138,7 @@ function MyCalendar({ onSelect }: { onSelect: (w: any) => void }) {
   const [loading, setLoading] = useState(true);
 
   const days = getWeekDays(weekOffset);
+  const [selectedDayIdx, setSelectedDayIdx] = useSelectedDay(weekOffset, days);
 
   useEffect(() => {
     if (!profile) return;
@@ -102,63 +181,75 @@ function MyCalendar({ onSelect }: { onSelect: (w: any) => void }) {
       {loading ? (
         <Card><div className="p-8 text-center text-sm text-ink-500">Loading calendar…</div></Card>
       ) : (
-      <Card pad={false} className="overflow-hidden">
-        <div className="grid border-b border-ink-100 bg-ink-50/40" style={{ gridTemplateColumns: '56px repeat(5, 1fr)' }}>
-          <div className="border-r border-ink-100" />
-          {days.map((d) => (
-            <div key={d.iso} className="px-4 py-3 text-center border-r border-ink-100 last:border-r-0">
-              <div className="text-xs font-medium text-ink-500">{d.label}</div>
-              <div className="text-sm font-bold text-ink-900">{d.dateLabel}</div>
-            </div>
-          ))}
-        </div>
+        <>
+          <DayChips
+            days={days}
+            selectedDayIdx={selectedDayIdx}
+            setSelectedDayIdx={setSelectedDayIdx}
+            ordersByDay={(iso) => orders.filter((w) => w.scheduled_date === iso)}
+          />
+          <div className="mb-4">
+            <AgendaList orders={orders.filter((w) => w.scheduled_date === days[selectedDayIdx].iso)} onSelect={onSelect} />
+          </div>
 
-        <div className="overflow-x-auto">
-          <div className="min-w-[700px] grid" style={{ gridTemplateColumns: '56px repeat(5, 1fr)' }}>
-            <div className="border-r border-ink-100 relative" style={{ height: hourHeight * HOURS.length }}>
-              {HOURS.map((h) => (
-                <div key={h} className="border-b border-ink-50 flex items-start justify-end pr-1.5 pt-0.5" style={{ height: hourHeight }}>
-                  <span className="text-[10px] text-ink-400">{h}:00</span>
+          <Card pad={false} className="overflow-hidden hidden md:block">
+            <div className="grid border-b border-ink-100 bg-ink-50/40" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
+              <div className="border-r border-ink-100" />
+              {days.map((d) => (
+                <div key={d.iso} className="px-4 py-3 text-center border-r border-ink-100 last:border-r-0">
+                  <div className="text-xs font-medium text-ink-500">{d.label}</div>
+                  <div className="text-sm font-bold text-ink-900">{d.dateLabel}</div>
                 </div>
               ))}
             </div>
 
-            {days.map((d) => {
-              const dayOrders = orders.filter((w) => w.scheduled_date === d.iso);
-              return (
-                <div key={d.iso} className="border-r border-ink-100 last:border-r-0 relative">
-                  <div className="relative" style={{ height: hourHeight * HOURS.length }}>
-                    {HOURS.map((h) => (
-                      <div key={h} className="border-b border-ink-50" style={{ height: hourHeight }} />
-                    ))}
-                    {dayOrders.map((w) => {
-                      const hourIdx = HOURS.indexOf((w.scheduled_time ?? '09:00').split(':')[0]);
-                      if (hourIdx < 0) return null;
-                      const top = hourIdx * hourHeight;
-                      const height = (w.duration_hrs ?? 1) * hourHeight - 4;
-                      return (
-                        <button
-                          key={w.id}
-                          onClick={() => onSelect(w)}
-                          className={cn('absolute left-1 right-1 rounded-md px-2 py-1 text-left text-white text-xs shadow-sm hover:shadow-md hover:opacity-90 transition overflow-hidden cursor-pointer', serviceBg(w.service_type))}
-                          style={{ top: top + 2, height: Math.max(height, 32) }}
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-semibold text-[10px]">{w.scheduled_time}</span>
-                            <Badge className={cn('text-[9px] py-0 px-1', priorityColor(w.priority))}>{w.priority}</Badge>
-                          </div>
-                          <div className="font-medium text-[11px] truncate mt-0.5">{w.client}</div>
-                          <div className="text-[10px] opacity-90 truncate">{w.service_type}</div>
-                        </button>
-                      );
-                    })}
-                  </div>
+            <div className="overflow-x-auto">
+              <div className="min-w-[980px] grid" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
+                <div className="border-r border-ink-100 relative" style={{ height: hourHeight * HOURS.length }}>
+                  {HOURS.map((h) => (
+                    <div key={h} className="border-b border-ink-50 flex items-start justify-end pr-1.5 pt-0.5" style={{ height: hourHeight }}>
+                      <span className="text-[10px] text-ink-400">{h}:00</span>
+                    </div>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </Card>
+
+                {days.map((d) => {
+                  const dayOrders = orders.filter((w) => w.scheduled_date === d.iso);
+                  return (
+                    <div key={d.iso} className="border-r border-ink-100 last:border-r-0 relative">
+                      <div className="relative" style={{ height: hourHeight * HOURS.length }}>
+                        {HOURS.map((h) => (
+                          <div key={h} className="border-b border-ink-50" style={{ height: hourHeight }} />
+                        ))}
+                        {dayOrders.map((w) => {
+                          const hourIdx = HOURS.indexOf((w.scheduled_time ?? '09:00').split(':')[0]);
+                          if (hourIdx < 0) return null;
+                          const top = hourIdx * hourHeight;
+                          const height = (w.duration_hrs ?? 1) * hourHeight - 4;
+                          return (
+                            <button
+                              key={w.id}
+                              onClick={() => onSelect(w)}
+                              className={cn('absolute left-1 right-1 rounded-md px-2 py-1 text-left text-white text-xs shadow-sm hover:shadow-md hover:opacity-90 transition overflow-hidden cursor-pointer', serviceBg(w.service_type))}
+                              style={{ top: top + 2, height: Math.max(height, 32) }}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-[10px]">{w.scheduled_time}</span>
+                                <Badge className={cn('text-[9px] py-0 px-1', priorityColor(w.priority))}>{w.priority}</Badge>
+                              </div>
+                              <div className="font-medium text-[11px] truncate mt-0.5">{w.client}</div>
+                              <div className="text-[10px] opacity-90 truncate">{w.service_type}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </Card>
+        </>
       )}
 
       <Legend />
@@ -179,6 +270,7 @@ function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'a
   const [createOpen, setCreateOpen] = useState(false);
 
   const days = getWeekDays(weekOffset);
+  const [selectedDayIdx, setSelectedDayIdx] = useSelectedDay(weekOffset, days);
 
   const fetchData = async () => {
     setLoading(true);
@@ -227,66 +319,77 @@ function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'a
       {loading ? (
         <Card><div className="p-8 text-center text-sm text-ink-500">Loading calendar…</div></Card>
       ) : (
-      <Card pad={false} className="overflow-hidden">
-        <div className="grid border-b border-ink-100 bg-ink-50/40" style={{ gridTemplateColumns: '56px repeat(5, 1fr)' }}>
-          <div className="border-r border-ink-100" />
-          {days.map((d) => (
-            <div key={d.iso} className="px-4 py-3 text-center border-r border-ink-100 last:border-r-0">
-              <div className="text-xs font-medium text-ink-500">{d.label}</div>
-              <div className="text-sm font-bold text-ink-900">{d.dateLabel}</div>
-            </div>
-          ))}
-        </div>
+        <>
+          <DayChips
+            days={days}
+            selectedDayIdx={selectedDayIdx}
+            setSelectedDayIdx={setSelectedDayIdx}
+            ordersByDay={(iso) => visibleOrders.filter((w) => w.scheduled_date === iso)}
+          />
+          <div className="mb-4">
+            <AgendaList orders={visibleOrders.filter((w) => w.scheduled_date === days[selectedDayIdx].iso)} onSelect={onSelect} techMap={techMap} />
+          </div>
 
-        <div className="overflow-x-auto">
-          <div className="min-w-[700px] grid" style={{ gridTemplateColumns: '56px repeat(5, 1fr)' }}>
-            <div className="border-r border-ink-100 relative" style={{ height: hourHeight * HOURS.length }}>
-              {HOURS.map((h) => (
-                <div key={h} className="border-b border-ink-50 flex items-start justify-end pr-1.5 pt-0.5" style={{ height: hourHeight }}>
-                  <span className="text-[10px] text-ink-400">{h}:00</span>
+          <Card pad={false} className="overflow-hidden hidden md:block">
+            <div className="grid border-b border-ink-100 bg-ink-50/40" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
+              <div className="border-r border-ink-100" />
+              {days.map((d) => (
+                <div key={d.iso} className="px-4 py-3 text-center border-r border-ink-100 last:border-r-0">
+                  <div className="text-xs font-medium text-ink-500">{d.label}</div>
+                  <div className="text-sm font-bold text-ink-900">{d.dateLabel}</div>
                 </div>
               ))}
             </div>
 
-            {days.map((d) => {
-              const dayOrders = visibleOrders.filter((w) => w.scheduled_date === d.iso);
-              return (
-                <div key={d.iso} className="border-r border-ink-100 last:border-r-0 relative">
-                  <div className="relative" style={{ height: hourHeight * HOURS.length }}>
-                    {HOURS.map((h) => (
-                      <div key={h} className="border-b border-ink-50" style={{ height: hourHeight }} />
-                    ))}
-                    {dayOrders.map((w, idx) => {
-                      const hourIdx = HOURS.indexOf((w.scheduled_time ?? '09:00').split(':')[0]);
-                      if (hourIdx < 0) return null;
-                      const top = hourIdx * hourHeight;
-                      const height = (w.duration_hrs ?? 1) * hourHeight - 4;
-                      const tech = w.technician_id ? techMap.get(w.technician_id) : null;
-                      // Offset overlapping same-hour cards slightly so they don't fully hide each other
-                      const overlapOffset = dayOrders.slice(0, idx).filter((o) => o.scheduled_time === w.scheduled_time).length * 6;
-                      return (
-                        <button
-                          key={w.id}
-                          onClick={() => onSelect(w)}
-                          className={cn('absolute rounded-md px-2 py-1 text-left text-white text-xs shadow-sm hover:shadow-md hover:opacity-95 hover:z-20 transition overflow-hidden cursor-pointer', serviceBg(w.service_type))}
-                          style={{ top: top + 2 + overlapOffset, left: 4 + overlapOffset, right: 4, height: Math.max(height, 32) }}
-                        >
-                          <div className="flex items-center justify-between gap-1.5">
-                            <span className="font-semibold text-[10px]">{w.scheduled_time}</span>
-                            {tech && <Avatar initials={tech.initials} color="bg-white/25" size="xs" />}
-                          </div>
-                          <div className="font-medium text-[11px] truncate mt-0.5">{w.client}</div>
-                          <div className="text-[10px] opacity-90 truncate">{tech ? tech.full_name : 'Unassigned'}</div>
-                        </button>
-                      );
-                    })}
-                  </div>
+            <div className="overflow-x-auto">
+              <div className="min-w-[980px] grid" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
+                <div className="border-r border-ink-100 relative" style={{ height: hourHeight * HOURS.length }}>
+                  {HOURS.map((h) => (
+                    <div key={h} className="border-b border-ink-50 flex items-start justify-end pr-1.5 pt-0.5" style={{ height: hourHeight }}>
+                      <span className="text-[10px] text-ink-400">{h}:00</span>
+                    </div>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </Card>
+
+                {days.map((d) => {
+                  const dayOrders = visibleOrders.filter((w) => w.scheduled_date === d.iso);
+                  return (
+                    <div key={d.iso} className="border-r border-ink-100 last:border-r-0 relative">
+                      <div className="relative" style={{ height: hourHeight * HOURS.length }}>
+                        {HOURS.map((h) => (
+                          <div key={h} className="border-b border-ink-50" style={{ height: hourHeight }} />
+                        ))}
+                        {dayOrders.map((w, idx) => {
+                          const hourIdx = HOURS.indexOf((w.scheduled_time ?? '09:00').split(':')[0]);
+                          if (hourIdx < 0) return null;
+                          const top = hourIdx * hourHeight;
+                          const height = (w.duration_hrs ?? 1) * hourHeight - 4;
+                          const tech = w.technician_id ? techMap.get(w.technician_id) : null;
+                          const overlapOffset = dayOrders.slice(0, idx).filter((o) => o.scheduled_time === w.scheduled_time).length * 6;
+                          return (
+                            <button
+                              key={w.id}
+                              onClick={() => onSelect(w)}
+                              className={cn('absolute rounded-md px-2 py-1 text-left text-white text-xs shadow-sm hover:shadow-md hover:opacity-95 hover:z-20 transition overflow-hidden cursor-pointer', serviceBg(w.service_type))}
+                              style={{ top: top + 2 + overlapOffset, left: 4 + overlapOffset, right: 4, height: Math.max(height, 32) }}
+                            >
+                              <div className="flex items-center justify-between gap-1.5">
+                                <span className="font-semibold text-[10px]">{w.scheduled_time}</span>
+                                {tech && <Avatar initials={tech.initials} color="bg-white/25" size="xs" />}
+                              </div>
+                              <div className="font-medium text-[11px] truncate mt-0.5">{w.client}</div>
+                              <div className="text-[10px] opacity-90 truncate">{tech ? tech.full_name : 'Unassigned'}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </Card>
+        </>
       )}
 
       <Legend editable />
