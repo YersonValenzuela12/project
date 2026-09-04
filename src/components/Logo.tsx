@@ -24,8 +24,8 @@ export function Logo({
       </div>
       {showText && (
         <div className="leading-tight">
-          <div className={cn('font-bold tracking-tight', text[size], light ? 'text-white' : 'text-ink-900')}><span className="text-primary-500">Selecom</span></div>
-          <div className={cn('text-[10px] font-medium uppercase tracking-wider', light ? 'text-white/60' : 'text-ink-400')}>Electronics Engineer</div>
+          <div className={cn('font-bold tracking-tight', text[size], light ? 'text-white' : 'text-ink-900')}><span className="text-primary-500">Electronics Selecom</span></div>
+          <div className={cn('text-[10px] font-medium uppercase tracking-wider', light ? 'text-white/60' : 'text-ink-400')}></div>
         </div>
       )}
     </div>

@@ -120,7 +120,7 @@ export function CalendarPage({
   role = 'technician',
 }: {
   onSelect: (w: any) => void;
-  role?: 'admin' | 'supervisor' | 'technician'| 'coordinador';
+  role?: 'admin' | 'supervisor' | 'technician';
 }) {
   const canEdit = role === 'admin' || role === 'supervisor';
   return canEdit

@@ -10,65 +10,92 @@ import { Avatar } from '@/components/ui';
 import type { Role } from '@/data/mockData';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
+import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 
 type NavConfig = { label: string; icon: typeof LayoutDashboard; page: string };
 
 const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
   admin: [
-    { group: 'Overview', items: [
-      { label: 'Dashboard', icon: LayoutDashboard, page: 'dashboard' },
+    { group: 'Mi Area de Trabajo', items: [
+      { label: 'Panel de Control', icon: LayoutDashboard, page: 'dashboard' },
     ]},
-    { group: 'Administration', items: [
-      { label: 'Users', icon: Users, page: 'users' },
-      { label: 'Roles & Permissions', icon: ShieldCheck, page: 'permissions' },
-      { label: 'Supervisors', icon: Building2, page: 'supervisors' },
-      { label: 'Technicians', icon: Wrench, page: 'technicians' },
+    { group: 'Administración', items: [
+      { label: 'Usuarios', icon: Users, page: 'users' },
+      { label: 'Roles & Permisos', icon: ShieldCheck, page: 'permissions' },
+      { label: 'Supervisores', icon: Building2, page: 'supervisors' },
+      { label: 'Tecnicos', icon: Wrench, page: 'technicians' },
     ]},
-    { group: 'Operations', items: [
-      { label: 'Work Orders', icon: ClipboardList, page: 'workorders' },
-      { label: 'Calendar', icon: Calendar, page: 'calendar' },
-      { label: 'Documents', icon: FolderOpen, page: 'documents' },
-      { label: 'Reports', icon: BarChart3, page: 'reports' },
+    { group: 'Operationes', items: [
+      { label: 'Ordenes de Trabajo', icon: ClipboardList, page: 'workorders' },
+      { label: 'Calendario', icon: Calendar, page: 'calendar' },
+      { label: 'Documentos', icon: FolderOpen, page: 'documents' },
+      { label: 'Reportes', icon: BarChart3, page: 'reports' },
       { label: 'Solicitudes', icon: FormInput, page: 'form_requests' },
     ]},
-    { group: 'System', items: [
-      { label: 'Audit Logs', icon: History, page: 'audit' },
-      { label: 'System Settings', icon: Settings, page: 'settings' },
+    { group: 'Sistema', items: [
+      { label: 'Auditar Logeos', icon: History, page: 'audit' },
+    
     ]},
   ],
+  
   supervisor: [
-    { group: 'Overview', items: [
-      { label: 'Dashboard', icon: LayoutDashboard, page: 'dashboard' },
+    { group: 'Mi Area de Trabajo', items: [
+      { label: 'Panel de Control', icon: LayoutDashboard, page: 'dashboard' },
     ]},
-    { group: 'Planning', items: [
-      { label: 'Calendar', icon: Calendar, page: 'calendar' },
-      { label: 'Work Orders', icon: ClipboardList, page: 'workorders' },
+    { group: 'Planes', items: [
+      { label: 'Calendario', icon: Calendar, page: 'calendar' },
+      { label: 'Ordenes de trabajo', icon: ClipboardList, page: 'workorders' },
     ]},
     { group: 'Team', items: [
-      { label: 'Technicians', icon: Wrench, page: 'technicians' },
+      { label: 'Tecnicos', icon: Wrench, page: 'technicians' },
     ]},
-    { group: 'Resources', items: [
-      { label: 'Documents', icon: FolderOpen, page: 'documents' },
-      { label: 'Forms', icon: FormInput, page: 'forms' },
+    { group: 'Recursos', items: [
+      { label: 'Documentos', icon: FolderOpen, page: 'documents' },
+      { label: 'Formularis', icon: FormInput, page: 'forms' },
       { label: 'Reports', icon: BarChart3, page: 'reports' },
     ]},
   ],
   technician: [
-    { group: 'My Work', items: [
-      { label: 'My Dashboard', icon: LayoutDashboard, page: 'dashboard' },
-      { label: "Today's Jobs", icon: ClipboardList, page: 'today' },
-      { label: 'Calendar', icon: Calendar, page: 'calendar' },
+    { group: 'Mi Area de Trabajo', items: [
+      { label: 'Panel de Control', icon: LayoutDashboard, page: 'dashboard' },
+      { label: "trabajos de hoy", icon: ClipboardList, page: 'today' },
+      { label: 'Calendario', icon: Calendar, page: 'calendar' },
     ]},
-    { group: 'Resources', items: [
-      { label: 'Documents', icon: FolderOpen, page: 'documents' },
-      { label: 'Forms', icon: FormInput, page: 'forms' },
+    { group: 'Recurcursos', items: [
+      { label: 'Documentos', icon: FolderOpen, page: 'documents' },
+      { label: 'Formularios', icon: FormInput, page: 'forms' },
     ]},
-    { group: 'Account', items: [
+    { group: 'Seguridad', items: [
       { label: 'History', icon: History, page: 'history' },
       { label: 'Profile', icon: UserCircle, page: 'profile' },
     ]},
   ],
+  coordinador: [
+    { group: 'Mi Area de Trabajo', items: [
+      { label: 'Panel de Control', icon: LayoutDashboard, page: 'dashboard' },
+    ]},
+    { group: 'Planificasión', items: [
+       { label: 'Requerimientos', icon: FileText, page: 'history' },
+      { label: 'Calendario', icon: Calendar, page: 'calendar' },
+     { label: 'Ordenes de trabajo', icon: ClipboardList, page: 'workorders' },
+    ]},
+     { group: 'Grupos', items: [
+      { label: 'Supervisores', icon: Building2, page: 'supervisors' },
+      { label: 'Tecnicos', icon: Wrench, page: 'technicians' },
+    ]},
+      { group: 'Atención al equipo', items: [
+      { label: 'atención', icon: Building2, page: 'supervisors' },
+    ]},   
+    { group: 'Recurcursos', items: [
+      { label: 'Documentos', icon: FolderOpen, page: 'documents' },
+      { label: 'Formularios', icon: FormInput, page: 'forms' },
+      { label: 'Reports', icon: BarChart3, page: 'reports' },
+    ]},
+
+  ],
 };
+
+ {/* estaba mas arriba  administrador- grupo de sistema} { label: 'configurar Sistema', icon: Settings, page: 'settings' }, */}
 
 function timeAgo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -136,7 +163,7 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
   };
 
   const roleLabel: Record<Role, string> = {
-    admin: 'Administrator', supervisor: 'Supervisor', technician: 'Technician',
+    admin: 'Administrator', supervisor: 'Supervisor', technician: 'Technician', coordinador: 'Coordinador',
   };
 
   return (
@@ -230,7 +257,7 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
               <div className="relative w-full">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
                 <input
-                  placeholder="Search work orders, clients, technicians…"
+                  placeholder="Busca ordenes de trabajo, clientes, tecnicos…"
                   className="w-full h-9 pl-9 pr-4 rounded-lg bg-ink-100 border border-transparent text-sm placeholder:text-ink-400 focus:outline-none focus:bg-white focus:border-primary-300 focus:ring-2 focus:ring-primary-500/20 transition"
                 />
               </div>
@@ -315,6 +342,7 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
                   <div className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-64 bg-white rounded-xl shadow-pop border border-ink-200 z-40 animate-fade-in overflow-hidden">
+                    {/*}
                     <div className="px-4 py-3 border-b border-ink-100">
                       <div className="flex items-center gap-3">
                         <Avatar initials={userInitials} color={userAvatarColor} size="md" />
@@ -324,16 +352,22 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
                         </div>
                       </div>
                     </div>
+                    */}
+
                     <div className="py-1.5">
-                      <MenuItem icon={UserCircle} label="My Profile" onClick={() => { setPage('profile'); setProfileOpen(false); }} />
-                      <MenuItem icon={Settings} label="Settings" onClick={() => { setPage('settings'); setProfileOpen(false); }} />
+                      <MenuItem icon={UserCircle} label="Mi Perfil" onClick={() => { setPage('profile'); setProfileOpen(false); }} />
+                      <MenuItem icon={Calendar} label="Calendario" onClick={() => { setPage('calendar'); setProfileOpen(false); }} />  
+                      <MenuItem icon={FolderOpen} label="Documentos" onClick={() => { setPage('documents'); setProfileOpen(false); }} /> 
                       <div className="my-1.5 border-t border-ink-100" />
+                      {/*}
+                       <MenuItem icon={Settings} label="Configuración" onClick={() => { setPage('settings'); setProfileOpen(false); }} />
                       <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-ink-400">Switch role (demo)</div>
                       <MenuItem icon={ShieldCheck} label="Administrator" active={role === 'admin'} onClick={() => { onSwitchRole('admin'); setProfileOpen(false); }} />
                       <MenuItem icon={Building2} label="Supervisor" active={role === 'supervisor'} onClick={() => { onSwitchRole('supervisor'); setProfileOpen(false); }} />
-                      <MenuItem icon={Wrench} label="Technician" active={role === 'technician'} onClick={() => { onSwitchRole('technician'); setProfileOpen(false); }} />
+                      <MenuItem icon={Wrench} label="Technician" active={role === 'technician'} onClick={() => { onSwitchRole('technician'); setProfileOpen(false); }} />  
+                      */}
                       <div className="my-1.5 border-t border-ink-100" />
-                      <MenuItem icon={LogOut} label="Sign out" onClick={onLogout} danger />
+                      <MenuItem icon={LogOut} label="Salir" onClick={onLogout} danger />
                     </div>
                   </div>
                 </>

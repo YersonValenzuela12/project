@@ -47,7 +47,7 @@ export function UserFormModal({
     setError(null);
     if (!name || !email) { setError('Name and email are required.'); return; }
     if (!user && (!password || password.length < 8)) {
-      setError('Password must be at least 8 characters for new users.');
+      setError('contraseña de 8 caracteres a más.');
       return;
     }
     setSaving(true);
@@ -107,28 +107,29 @@ export function UserFormModal({
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <div><label className="label">Full name</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" /></div>
+        <div><label className="label">nombre completo</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" /></div>
         <div>
-          <label className="label">Email</label>
+          <label className="label">correo</label>
           <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jane@selecom.com" disabled={!!user} />
         </div>
         {!user && (
           <div className="col-span-2">
-            <label className="label">Temporary password</label>
+            <label className="label">correo temporal</label>
             <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" />
           </div>
         )}
         <div>
-          <label className="label">Role</label>
+          <label className="label">Rol</label>
           <select className="input" value={role} onChange={(e) => setRole(e.target.value as Role)}>
             <option value="admin">Administrator</option>
             <option value="supervisor">Supervisor</option>
+            <option value="coordinador">Coordinador</option>
             <option value="technician">Technician</option>
           </select>
         </div>
-        <div><label className="label">Job title</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Field Technician" /></div>
-        <div><label className="label">Phone</label><input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+51 915 555 100" /></div>
-        <div><label className="label">Location</label><input className="input" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="Distrito" /></div>
+        <div><label className="label">perfil</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Field Technician" /></div>
+        <div><label className="label">telefono</label><input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+51 915 555 100" /></div>
+        <div><label className="label">distrito</label><input className="input" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="Distrito" /></div>
       </div>
       <div className="mt-5 p-4 rounded-xl border border-ink-200 bg-white">
         <div className="flex items-center gap-2 text-sm font-semibold text-ink-800 mb-2"><ShieldCheck size={15} className="text-primary-600" /> Role permissions preview</div>

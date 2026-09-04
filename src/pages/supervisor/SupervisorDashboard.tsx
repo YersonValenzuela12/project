@@ -65,13 +65,13 @@ export function SupervisorDashboard({ onSelect, setPage }: { onSelect: (w: any) 
   return (
     <div>
       <PageHeader
-        title="Supervisor Dashboard"
+        title="Panel de Supervisor"
         subtitle={`${profile.region ?? 'Selecom'} · ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`}
         breadcrumbs={['Home', 'Supervisor', 'Dashboard']}
         actions={
           <>
-            <button className="btn-secondary" onClick={() => setPage('calendar')}><CalendarClock size={15} /> Reschedule</button>
-            <button className="btn-primary" onClick={() => setPage('workorders')}><FilePlus2 size={15} /> Create Work Order</button>
+            <button className="btn-secondary" onClick={() => setPage('calendar')}><CalendarClock size={15} /> Calendario</button>
+            <button className="btn-primary" onClick={() => setPage('workorders')}><FilePlus2 size={15} /> Crear Orden de Trabajo</button>
           </>
         }
       />
@@ -81,26 +81,26 @@ export function SupervisorDashboard({ onSelect, setPage }: { onSelect: (w: any) 
       ) : (
       <>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Today's Jobs" value={today.length} icon={ClipboardList} iconColor="bg-primary-50 text-primary-600" />
-        <StatCard label="Pending Jobs" value={pending} icon={Clock} iconColor="bg-amber-50 text-amber-600" />
-        <StatCard label="Completed Jobs" value={completed} icon={CheckCircle2} iconColor="bg-emerald-50 text-emerald-600" />
-        <StatCard label="Urgent Jobs" value={urgent} icon={AlertTriangle} iconColor="bg-red-50 text-red-600" />
+        <StatCard label="Trabajo de Hoy" value={today.length} icon={ClipboardList} iconColor="bg-primary-50 text-primary-600" />
+        <StatCard label="Trabajos Pendientes" value={pending} icon={Clock} iconColor="bg-amber-50 text-amber-600" />
+        <StatCard label="Trabajos Completados" value={completed} icon={CheckCircle2} iconColor="bg-emerald-50 text-emerald-600" />
+        <StatCard label="Trabajos Urgentes" value={urgent} icon={AlertTriangle} iconColor="bg-red-50 text-red-600" />
       </div>
 
       {/* Quick actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <QuickAction icon={FilePlus2} label="Create Work Order" onClick={() => setPage('workorders')} />
-        <QuickAction icon={UserPlus} label="Assign Technician" onClick={() => setPage('workorders')} />
-        <QuickAction icon={FolderOpen} label="Upload Documents" onClick={() => setPage('documents')} />
-        <QuickAction icon={CalendarClock} label="Reschedule" onClick={() => setPage('calendar')} />
+        <QuickAction icon={FilePlus2} label="Crear Orden de Trabajo" onClick={() => setPage('workorders')} />
+        <QuickAction icon={UserPlus} label="Asignar Técnico" onClick={() => setPage('workorders')} />
+        <QuickAction icon={FolderOpen} label="Subir Documentos" onClick={() => setPage('documents')} />
+        <QuickAction icon={CalendarClock} label="Reprogramar" onClick={() => setPage('calendar')} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Today's schedule */}
         <Card className="lg:col-span-2" pad={false}>
-          <div className="p-5 pb-3"><SectionHeader title="Today's Schedule" subtitle={`${today.length} jobs scheduled today`} action={<button className="text-sm font-medium text-primary-600" onClick={() => setPage('calendar')}>Open calendar</button>} /></div>
+          <div className="p-5 pb-3"><SectionHeader title="Calendario de Hoy" subtitle={`${today.length} jobs scheduled today`} action={<button className="text-sm font-medium text-primary-600" onClick={() => setPage('calendar')}>Open calendar</button>} /></div>
           <div className="divide-y divide-ink-50">
-            {today.length === 0 && <div className="px-5 py-8 text-center text-sm text-ink-400">No jobs scheduled today.</div>}
+            {today.length === 0 && <div className="px-5 py-8 text-center text-sm text-ink-400">Descansando.</div>}
             {today.map((w) => {
               const tech = w.technician_id ? techMap.get(w.technician_id) : null;
               return (
@@ -129,7 +129,7 @@ export function SupervisorDashboard({ onSelect, setPage }: { onSelect: (w: any) 
 
         {/* Technician assignment panel */}
         <Card pad={false}>
-          <div className="p-5 pb-3"><SectionHeader title="Technicians" subtitle="Availability today" /></div>
+          <div className="p-5 pb-3"><SectionHeader title="Tecnicos" subtitle="actividad de hoy" /></div>
           <div className="divide-y divide-ink-50">
             {technicians.slice(0, 6).map((t) => {
               const assigned = orders.filter((w) => w.technician_id === t.id && w.scheduled_date === todayISO());
@@ -163,9 +163,9 @@ export function SupervisorDashboard({ onSelect, setPage }: { onSelect: (w: any) 
       {/* Upcoming + weekly load */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
-          <SectionHeader title="Upcoming Maintenance" subtitle="Next scheduled jobs" />
+          <SectionHeader title="Maintenimiento Programado" subtitle="Próximas órdenes programadas" />
           <div className="space-y-1">
-            {upcoming.length === 0 && <div className="text-center text-sm text-ink-400 py-6">Nothing upcoming.</div>}
+            {upcoming.length === 0 && <div className="text-center text-sm text-ink-400 py-6">No hay nada programado.</div>}
             {upcoming.map((w) => (
               <button key={w.id} onClick={() => onSelect(w)} className="w-full flex items-center gap-3 py-2.5 border-b border-ink-50 last:border-0 hover:bg-ink-50/40 rounded-lg px-2 text-left">
                 <Badge className={priorityColor(w.priority)}>{w.priority}</Badge>
@@ -179,7 +179,7 @@ export function SupervisorDashboard({ onSelect, setPage }: { onSelect: (w: any) 
           </div>
         </Card>
         <Card>
-          <SectionHeader title="Weekly Workload" subtitle="Jobs scheduled per day" />
+          <SectionHeader title="Carga Semanal" subtitle="Órdenes programadas por día" />
           <BarChart data={weekData} height={200} />
         </Card>
       </div>

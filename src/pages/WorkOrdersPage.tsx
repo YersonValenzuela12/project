@@ -56,7 +56,7 @@ export function WorkOrdersPage({
   breadcrumbs: string[];
   onSelect: (w: any) => void;
   showAssign?: boolean;
-  role?: 'admin' | 'supervisor' | 'technician';
+  role?: 'admin' | 'supervisor' | 'technician'| 'coordinador';
 }) {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<string>('all');

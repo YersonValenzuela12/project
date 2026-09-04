@@ -66,7 +66,7 @@ type DashboardData = {
   }[];
 };
 
-export function AdminDashboard({ setPage, onAction }: { setPage: (p: string) => void; onAction: (a: string) => void }) {
+export function CoordinadorDashboard({ setPage, onAction }: { setPage: (p: string) => void; onAction: (a: string) => void }) {
   const [data, setData] = useState<DashboardData | null>(null);
 
   useEffect(() => {
@@ -203,9 +203,9 @@ export function AdminDashboard({ setPage, onAction }: { setPage: (p: string) => 
   return (
     <div>
       <PageHeader
-        title="Administrator Dashboard"
+        title="Coordinador Dashboard"
         subtitle="System-wide overview of users, operations, and compliance"
-        breadcrumbs={['Home', 'Administrator', 'Dashboard']}
+        breadcrumbs={['Home', 'Coordinador', 'Dashboard']}
         actions={
           <>
            {/*} <button className="btn-secondary"><Download size={15} /> Export</button>*/}

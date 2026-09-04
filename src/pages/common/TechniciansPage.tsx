@@ -12,7 +12,7 @@ export function TechniciansPage({
   roleFilter = 'technician',
 }: {
   adminView?: boolean;
-  roleFilter?: 'technician' | 'supervisor';
+  roleFilter?: 'technician' | 'supervisor' | 'coordinador';
 }) {
   const [q, setQ] = useState('');
   const [rows, setRows] = useState<ProfileRow[]>([]);
@@ -38,10 +38,10 @@ export function TechniciansPage({
 
   const handleSaved = () => { setModalOpen(false); fetchPeople(); };
 
-  const label = roleFilter === 'supervisor' ? 'Supervisors' : 'Technicians';
-  const noun = roleFilter === 'supervisor' ? 'supervisors' : 'field technicians';
-  const searchPlaceholder = roleFilter === 'supervisor' ? 'Search supervisors…' : 'Search technicians…';
-  const addLabel = roleFilter === 'supervisor' ? 'Add Supervisor' : 'Add Technician';
+  const label = roleFilter === 'supervisor' ? 'Supervisors' : roleFilter === 'coordinador' ? 'Coordinadores' : 'Technicians';
+  const noun = roleFilter === 'supervisor' ? 'supervisors' : roleFilter === 'coordinador' ? 'coordinadores' : 'field technicians';
+  const searchPlaceholder = roleFilter === 'supervisor' ? 'Search supervisors…' : roleFilter === 'coordinador' ? 'Search coordinadores…' : 'Search technicians…';
+  const addLabel = roleFilter === 'supervisor' ? 'Add Supervisor' : roleFilter === 'coordinador' ? 'Add Coordinador' : 'Add Technician';
 
   return (
     <div>
@@ -89,8 +89,8 @@ export function TechniciansPage({
                 </div>
                 <div className="mt-3"><ProgressBar value={Math.min(100, active.length * 30)} barClass="bg-primary-500" /></div>
                 <div className="flex items-center gap-2 mt-4">
-                  <button className="btn-secondary flex-1 h-8 text-xs"><Mail size={13} /> Email</button>
-                  <button className="btn-secondary flex-1 h-8 text-xs"><Phone size={13} /> Call</button>
+                  <button className="btn-secondary flex-1 h-8 text-xs"><Mail size={13} /> Correo</button>
+                  <button className="btn-secondary flex-1 h-8 text-xs"><Phone size={13} /> Numero</button>
                 </div>
               </Card>
             );

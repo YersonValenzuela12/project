@@ -19,6 +19,7 @@ import { TechniciansPage } from '@/pages/common/TechniciansPage';
 import { DocumentsPage, ProfilePage } from '@/pages/common/CommonPages';
 import { NotificationsPage, HelpPage } from '@/pages/common/NotificationsHelp';
 import { FullPageLoader } from '@/components/ui';
+//import { CoordinadorDashboard } from '@/pages/coordinador/CoordinadorDashboard';
 
 function App() {
   const { session, profile, loading, signOut } = useAuth();
@@ -55,6 +56,7 @@ function App() {
       case 'dashboard':
         if (role === 'admin') return <AdminDashboard setPage={goPage} onAction={() => goPage('workorders')} />;
         if (role === 'supervisor') return <SupervisorDashboard onSelect={() => setPage('workorders')} setPage={goPage} />;
+        //if (role === 'coordinador') return <CoordinadorDashboard onSelect={() => goPage('workorders')} />;
         return <TechnicianDashboard onSelect={() => setPage('workorders')} setPage={goPage} />;
       case 'today':
         return <WorkOrdersPage title="Today's Jobs" breadcrumbs={['Home', 'Technician', "Today's Jobs"]} onSelect={() => setPage('workorders')} showAssign={false} />;

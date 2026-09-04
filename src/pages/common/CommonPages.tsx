@@ -355,7 +355,7 @@ export function ProfilePage() {
   };
   return (
     <div>
-      <PageHeader title="My Profile" subtitle="Personal information, performance, and preferences" breadcrumbs={['Home', 'Profile']} />
+      <PageHeader title="Mi Perfil" subtitle="Información personal, desempeño y preferencias" breadcrumbs={['Home', 'Profile']} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <Card className="lg:col-span-1">
@@ -371,32 +371,32 @@ export function ProfilePage() {
             </div>
           </div>
           <div className="mt-4 pt-4 border-t border-ink-100 space-y-2.5">
-            <InfoLine label="Email" value={user.email} />
-            <InfoLine label="Phone" value={user.phone} />
-            <InfoLine label="Region" value={user.region} />
-            <InfoLine label="Joined" value={user.joined} />
+            <InfoLine label="Correo" value={user.email} />
+            <InfoLine label="Telefono" value={user.phone} />
+            <InfoLine label="Distrito" value={user.region} />
+            <InfoLine label="Perfil" value={user.joined} />
           </div>
         </Card>
 
         <div className="lg:col-span-2 space-y-5">
           <Card>
-            <SectionHeader title="Personal Information" action={<button className="btn-secondary h-8 text-xs">Edit</button>} />
+            <SectionHeader title="Información Personal" action={<button className="btn-secondary h-8 text-xs">Edit</button>} />
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Full name</label><input className="input" defaultValue={user.name} /></div>
-              <div><label className="label">Email</label><input className="input" defaultValue={user.email} /></div>
-              <div><label className="label">Phone</label><input className="input" defaultValue={user.phone} /></div>
-              <div><label className="label">Region</label><input className="input" defaultValue={user.region} /></div>
+              <div><label className="label">Nombre completo</label><input className="input" defaultValue={user.name} /></div>
+              <div><label className="label">Correo Electrónico</label><input className="input" defaultValue={user.email} /></div>
+              <div><label className="label">Telefono</label><input className="input" defaultValue={user.phone} /></div>
+              <div><label className="label">Distrito</label><input className="input" defaultValue={user.region} /></div>
             </div>
           </Card>
           <Card>
-            <SectionHeader title="Security" />
+            <SectionHeader title="Seguridad" />
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-ink-50"><div><div className="text-sm font-medium text-ink-900">Password</div><div className="text-xs text-ink-500">Last changed 41 days ago</div></div><button className="btn-secondary h-8 text-xs">Change</button></div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50/50"><div><div className="text-sm font-medium text-ink-900">Two-factor auth</div><div className="text-xs text-ink-500">Enabled via authenticator app</div></div><Badge className="bg-emerald-50 text-emerald-700">On</Badge></div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-ink-50"><div><div className="text-sm font-medium text-ink-900">Contraseña</div><div className="text-xs text-ink-500">Last changed 41 days ago</div></div><button className="btn-secondary h-8 text-xs">Change</button></div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50/50"><div><div className="text-sm font-medium text-ink-900">doble autenticasion</div><div className="text-xs text-ink-500">Enabled via authenticator app</div></div><Badge className="bg-emerald-50 text-emerald-700">On</Badge></div>
             </div>
           </Card>
           <Card>
-            <SectionHeader title="Skills & Certifications" />
+            <SectionHeader title="Habilidades & Certificaciones" />
             <div className="flex flex-wrap gap-2">
               {['CCTV — Level 3', 'Access Control — Level 2', 'Fire Alarm — NFPA 72', 'Fiber Splicing', 'BMS — Siemens Desigo', 'OSHA 30', 'First Aid / CPR'].map((s) => (
                 <Badge key={s} className="bg-primary-50 text-primary-700">{s}</Badge>

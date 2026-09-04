@@ -1,7 +1,7 @@
-// Central mock data for the Sentinel Field FSM platform.
+// Central mock data for the Selecom platform.
 // Realistic enterprise data across all three roles.
 
-export type Role = 'admin' | 'supervisor' | 'technician';
+export type Role = 'admin' | 'supervisor' | 'technician'|'coordinador';
 
 export type WOStatus = 'open' | 'scheduled' | 'in_progress' | 'paused' | 'completed' | 'cancelled';
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
@@ -100,15 +100,16 @@ export const currentUser: Record<Role, User> = {
     status: 'active', lastLogin: '2026-08-07 06:55', avatarColor: 'bg-amber-600',
     initials: 'DO', region: 'surquillo',
   },
+    coordinador: {
+    id: 'u-031', name: 'Daniel Okafor', email: 'daniel.okafor@selecom.com',
+    role: 'coordinador', title: ' coordinador', phone: '+51 915 550 173',
+    status: 'active', lastLogin: '2026-08-07 06:55', avatarColor: 'bg-amber-600',
+    initials: 'DO', region: 'lima',},
 };
 
 export const users: User[] = [
   { id: 'u-001', name: 'Rachel Whitman', email: 'rachel.whitman@selecom.com', role: 'admin', title: 'System Administrator', phone: '+51 955 220 182', status: 'active', lastLogin: '2026-08-07 08:14', avatarColor: 'bg-primary-600', initials: 'RW', region: 'HQ — San Francisco' },
   { id: 'u-002', name: 'Aisha Karim', email: 'aisha.karim@selecom.com', role: 'admin', title: 'IT Operations Lead', phone: '+51 915 550 119', status: 'active', lastLogin: '2026-08-06 17:22', avatarColor: 'bg-indigo-600', initials: 'AK', region: 'HQ — San Francisco' },
-  { id: 'u-003', name: 'Thomas Reyes', email: 'thomas.reyes@selecom.com', role: 'admin', title: 'Compliance Officer', phone: '+51 915 551 103', status: 'suspended', lastLogin: '2026-07-29 11:08', avatarColor: 'bg-slate-600', initials: 'TR', region: 'HQ — San Francisco' },
-  { id: 'u-011', name: 'Marcus Delgado', email: 'marcus.delgado@selecom.com', role: 'supervisor', title: 'Field Supervisor — North Bay', phone: '+51 915 555 144', status: 'active', lastLogin: '2026-08-07 07:42', avatarColor: 'bg-emerald-600', initials: 'MD', region: 'North Bay District' },
-  { id: 'u-012', name: 'Sofia Bergstrom', email: 'sofia.bergstrom@selecom.com', role: 'supervisor', title: 'Field Supervisor — East Bay', phone: '+51 905 550 156', status: 'active', lastLogin: '2026-08-07 07:18', avatarColor: 'bg-teal-600', initials: 'SB', region: 'East Bay District' },
-  { id: 'u-013', name: 'Henrik Lund', email: 'henrik.lund@selecom.com', role: 'supervisor', title: 'Field Supervisor — South Bay', phone: '+51 908 555 167', status: 'active', lastLogin: '2026-08-06 18:40', avatarColor: 'bg-cyan-600', initials: 'HL', region: 'South Bay District' },
   { id: 'u-031', name: 'Daniel Okafor', email: 'daniel.okafor@selecom.com', role: 'technician', title: 'Senior Field Technician', phone: '+51 914 155 173', status: 'active', lastLogin: '2026-08-07 06:55', avatarColor: 'bg-amber-600', initials: 'DO', region: 'North Bay District' },
   { id: 'u-032', name: 'Priya Nair', email: 'priya.nair@selecom.com', role: 'technician', title: 'CCTV & Access Control Tech', phone: '+51 915 555 188', status: 'active', lastLogin: '2026-08-07 06:48', avatarColor: 'bg-rose-600', initials: 'PN', region: 'North Bay District' },
   { id: 'u-033', name: 'Liam Connolly', email: 'liam.connolly@selecom.com', role: 'technician', title: 'Fire Systems Technician', phone: '+51 915 555 192', status: 'active', lastLogin: '2026-08-07 06:31', avatarColor: 'bg-orange-600', initials: 'LC', region: 'East Bay District' },
@@ -116,10 +117,12 @@ export const users: User[] = [
   { id: 'u-035', name: 'Oscar Martinez', email: 'oscar.martinez@selecom.com', role: 'technician', title: 'Electronic Security Tech', phone: '+51 914 555 147', status: 'active', lastLogin: '2026-08-06 16:40', avatarColor: 'bg-orange-600', initials: 'OM', region: 'North Bay District' },
   { id: 'u-036', name: 'Nadia Petrov', email: 'nadia.petrov@selecom.com', role: 'technician', title: 'Fire Water Systems Tech', phone: '+51 915 555 138', status: 'active', lastLogin: '2026-07-30 09:15', avatarColor: 'bg-orange-600', initials: 'NP', region: 'East Bay District' },
   { id: 'u-037', name: 'Ethan Brooks', email: 'ethan.brooks@selecom.com', role: 'technician', title: 'Junior Field Technician', phone: '+51 908 555 111', status: 'active', lastLogin: '2026-08-07 07:02', avatarColor: 'bg-lime-600', initials: 'EB', region: 'South Bay District' },
+  { id: 'u-038', name: 'Maria Gonzalez', email: 'maria.gonzalez@selecom.com', role: 'coordinador', title: 'Coordinador de Operaciones', phone: '+51 915 555 144', status: 'active', lastLogin: '2026-08-07 07:42', avatarColor: 'bg-emerald-600', initials: 'MG', region: 'North Bay District' },
 ];
 
 export const technicians = users.filter((u) => u.role === 'technician');
 export const supervisors = users.filter((u) => u.role === 'supervisor');
+export const coordinadores = users.filter((u) => u.role === 'coordinador');
 
 export const workOrders: WorkOrder[] = [
   {

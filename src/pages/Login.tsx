@@ -135,7 +135,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-ink-900 tracking-tight">INTRANET</h2>
-            <p className="text-sm text-ink-500 mt-1.5">Enter your credentials to access Selecom.</p>
+            <p className="text-sm text-ink-500 mt-1.5">ingresa tus credentiales para acceder a Selecom.</p>
           </div>
 
           {error && (
@@ -147,7 +147,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
           <form onSubmit={submit} className="space-y-4">
             <div>
-              <label className="label">Work email</label>
+              <label className="label">correo</label>
               <div className="relative">
                 <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
                 <input
@@ -158,7 +158,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="label mb-0">Password</label>
+                <label className="label mb-0">Contraseña</label>
                 <button type="button" onClick={openForgot} className="text-xs font-medium text-primary-600 hover:text-primary-700">Forgot password?</button>
               </div>
               <div className="relative">
@@ -179,7 +179,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
             </label>
 
             <button type="submit" disabled={loading} className="btn-primary w-full py-2.5 text-sm disabled:opacity-70">
-              {loading ? 'Signing in…' : (<>Sign in <ArrowRight size={16} /></>)}
+              {loading ? 'ingresar…' : (<>Sign in <ArrowRight size={16} /></>)}
             </button>
           </form>
 {/*}
@@ -236,9 +236,9 @@ export function Login({ onLogin }: { onLogin: () => void }) {
                 <div className="h-12 w-12 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-3">
                   <CheckCircle2 size={24} className="text-emerald-600" />
                 </div>
-                <h3 className="text-lg font-bold text-ink-900">Check your email</h3>
+                <h3 className="text-lg font-bold text-ink-900">valida tu correo</h3>
                 <p className="text-sm text-ink-500 mt-2">
-                  If an account exists for <span className="font-medium text-ink-700">{forgotEmail}</span>, you'll receive a link to reset your password.
+                  una cuenta existente <span className="font-medium text-ink-700">{forgotEmail}</span>,recibiras el link para cambiar la contraseña.
                 </p>
                 <button onClick={() => setForgotOpen(false)} className="btn-primary w-full py-2.5 text-sm mt-6">
                   Got it
@@ -246,9 +246,9 @@ export function Login({ onLogin }: { onLogin: () => void }) {
               </div>
             ) : (
               <>
-                <h3 className="text-lg font-bold text-ink-900">Reset your password</h3>
+                <h3 className="text-lg font-bold text-ink-900">cambio de contraseña</h3>
                 <p className="text-sm text-ink-500 mt-1.5 mb-5">
-                  Enter your work email and we'll send you a link to reset your password.
+                  ingresa tu correo electrónico para cambiar de contraseña.
                 </p>
 
                 {forgotError && (
@@ -260,7 +260,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
                 <form onSubmit={submitForgot} className="space-y-4">
                   <div>
-                    <label className="label">Work email</label>
+                    <label className="label">Correo</label>
                     <div className="relative">
                       <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
                       <input

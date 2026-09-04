@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Modal, Avatar, Badge } from '@/components/ui';
 import { supabase } from '@/lib/supabase';
 
@@ -15,11 +15,40 @@ interface SiteOption {
   client: string;
   site_name: string;
   address: string | null;
+  image_url: string | null;
 }
 
 const SERVICE_TYPES = ['CCTV', 'Access Control', 'Fire Alarm', 'Fire Water', 'BMS', 'Electronic Security'];
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 const STATUSES = ['open', 'scheduled', 'in_progress', 'paused', 'completed'];
+
+const MAX_ORIGINAL_BYTES = 20 * 1024 * 1024; // 20 MB hard cap before we even try to compress
+const COMPRESS_MAX_WIDTH = 1200;
+const COMPRESS_QUALITY = 0.8;
+
+async function compressImage(file: File): Promise<Blob> {
+  const img = document.createElement('img');
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('Could not read image.'));
+      img.src = objectUrl;
+    });
+    const scale = Math.min(1, COMPRESS_MAX_WIDTH / img.width);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas not supported.');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', COMPRESS_QUALITY));
+    if (!blob) throw new Error('Could not compress image.');
+    return blob;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
 
 export function WorkOrderFormModal({
   order = null,
@@ -36,13 +65,19 @@ export function WorkOrderFormModal({
   const [site, setSite] = useState(order?.site ?? '');
   const [address, setAddress] = useState(order?.address ?? '');
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(order?.site_id ?? null);
+  const [selectedSiteImage, setSelectedSiteImage] = useState<string | null>(null);
   const [sites, setSites] = useState<SiteOption[]>([]);
   const [siteQuery, setSiteQuery] = useState('');
   const [showAddSite, setShowAddSite] = useState(false);
   const [newClient, setNewClient] = useState('');
   const [newSiteName, setNewSiteName] = useState('');
   const [newAddress, setNewAddress] = useState('');
+  const [newSiteImageFile, setNewSiteImageFile] = useState<File | null>(null);
+  const [newSiteImagePreview, setNewSiteImagePreview] = useState<string | null>(null);
   const [savingSite, setSavingSite] = useState(false);
+  const [uploadingExistingPhoto, setUploadingExistingPhoto] = useState(false);
+  const newSiteImageInputRef = useRef<HTMLInputElement>(null);
+  const existingSiteImageInputRef = useRef<HTMLInputElement>(null);
   const [serviceType, setServiceType] = useState(order?.service_type ?? SERVICE_TYPES[0]);
   const [priority, setPriority] = useState(order?.priority ?? 'medium');
   const [status, setStatus] = useState(order?.status ?? 'open');
@@ -67,9 +102,15 @@ export function WorkOrderFormModal({
 
       const { data: siteRows } = await supabase
         .from('sites')
-        .select('id, client, site_name, address')
+        .select('id, client, site_name, address, image_url')
         .order('client');
-      if (siteRows) setSites(siteRows as SiteOption[]);
+      if (siteRows) {
+        setSites(siteRows as SiteOption[]);
+        if (isEdit && order?.site_id) {
+          const match = (siteRows as SiteOption[]).find((s) => s.id === order.site_id);
+          if (match) setSelectedSiteImage(match.image_url ?? null);
+        }
+      }
 
       if (isEdit) {
         const preselected = new Set<string>();
@@ -95,6 +136,7 @@ export function WorkOrderFormModal({
     setClient(s.client);
     setSite(s.site_name);
     setAddress(s.address ?? '');
+    setSelectedSiteImage(s.image_url ?? null);
     setSiteQuery('');
   };
 
@@ -103,15 +145,45 @@ export function WorkOrderFormModal({
     setClient('');
     setSite('');
     setAddress('');
+    setSelectedSiteImage(null);
+  };
+
+  const handleNewSiteImagePick = (file: File | null) => {
+    if (!file) { setNewSiteImageFile(null); setNewSiteImagePreview(null); return; }
+    if (file.size > MAX_ORIGINAL_BYTES) { setError('Photo is too large (max 20 MB).'); return; }
+    setError(null);
+    setNewSiteImageFile(file);
+    setNewSiteImagePreview(URL.createObjectURL(file));
+  };
+
+  const uploadSiteImage = async (file: File): Promise<string | null> => {
+    try {
+      const compressed = await compressImage(file);
+      const path = `sites/${crypto.randomUUID()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from('Documents').upload(path, compressed, { contentType: 'image/jpeg' });
+      if (uploadError) { setError(`Photo upload failed: ${uploadError.message}`); return null; }
+      const { data } = supabase.storage.from('Documents').getPublicUrl(path);
+      return data.publicUrl;
+    } catch (e: any) {
+      setError(`Photo upload failed: ${e.message ?? 'unknown error'}`);
+      return null;
+    }
   };
 
   const createSite = async () => {
     if (!newClient || !newSiteName) { setError('Client and site name are required to add a new site.'); return; }
     setError(null);
     setSavingSite(true);
+
+    let imageUrl: string | null = null;
+    if (newSiteImageFile) {
+      imageUrl = await uploadSiteImage(newSiteImageFile);
+      if (imageUrl === null && newSiteImageFile) { setSavingSite(false); return; } // upload error already set
+    }
+
     const { data: created, error: siteError } = await supabase
       .from('sites')
-      .insert({ client: newClient, site_name: newSiteName, address: newAddress || null })
+      .insert({ client: newClient, site_name: newSiteName, address: newAddress || null, image_url: imageUrl })
       .select()
       .single();
     setSavingSite(false);
@@ -120,7 +192,21 @@ export function WorkOrderFormModal({
     setSites((prev) => [...prev, newSite].sort((a, b) => a.client.localeCompare(b.client)));
     pickSite(newSite);
     setShowAddSite(false);
-    setNewClient(''); setNewSiteName(''); setNewAddress('');
+    setNewClient(''); setNewSiteName(''); setNewAddress(''); setNewSiteImageFile(null); setNewSiteImagePreview(null);
+  };
+
+  const handleAddPhotoToExistingSite = async (file: File | null) => {
+    if (!file || !selectedSiteId) return;
+    if (file.size > MAX_ORIGINAL_BYTES) { setError('Photo is too large (max 20 MB).'); return; }
+    setError(null);
+    setUploadingExistingPhoto(true);
+    const url = await uploadSiteImage(file);
+    if (url) {
+      await supabase.from('sites').update({ image_url: url }).eq('id', selectedSiteId);
+      setSelectedSiteImage(url);
+      setSites((prev) => prev.map((s) => (s.id === selectedSiteId ? { ...s, image_url: url } : s)));
+    }
+    setUploadingExistingPhoto(false);
   };
 
   const filteredSites = sites.filter((s) =>
@@ -221,22 +307,49 @@ export function WorkOrderFormModal({
 
           {client && site && !showAddSite ? (
             <div className="rounded-lg border border-ink-200 bg-ink-50 px-3 py-2.5">
-              <div className="flex items-center justify-between mb-2">
-                <div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-12 w-12 rounded-md overflow-hidden bg-ink-200 shrink-0 flex items-center justify-center">
+                  {selectedSiteImage ? (
+                    <img src={selectedSiteImage} alt={site} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-[9px] text-ink-400 text-center px-1">No photo</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-ink-900">{client}</div>
                   <div className="text-xs text-ink-500">{site}</div>
                 </div>
-                <button type="button" onClick={changeSite} className="text-xs font-semibold text-primary-600 hover:text-primary-700">Change</button>
+                <button type="button" onClick={changeSite} className="text-xs font-semibold text-primary-600 hover:text-primary-700 shrink-0">Change</button>
               </div>
-              <input className="input h-9" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address / reference (floor, suite…)" />
+              <input className="input h-9 mb-2" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address / reference (floor, suite…)" />
+              <input ref={existingSiteImageInputRef} type="file" accept="image/*" hidden onChange={(e) => handleAddPhotoToExistingSite(e.target.files?.[0] ?? null)} />
+              <button type="button" onClick={() => existingSiteImageInputRef.current?.click()} disabled={uploadingExistingPhoto} className="text-xs font-semibold text-primary-600 hover:text-primary-700">
+                {uploadingExistingPhoto ? 'Uploading…' : selectedSiteImage ? 'Change photo' : 'Add photo'}
+              </button>
             </div>
           ) : showAddSite ? (
             <div className="rounded-lg border border-ink-200 p-3 space-y-2">
               <input className="input" value={newClient} onChange={(e) => setNewClient(e.target.value)} placeholder="Client" />
               <input className="input" value={newSiteName} onChange={(e) => setNewSiteName(e.target.value)} placeholder="Site / building name" />
               <input className="input" value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder="Full address" />
+
+              <div className="flex items-center gap-3">
+                <div className="h-14 w-14 rounded-md overflow-hidden bg-ink-100 border border-ink-200 shrink-0 flex items-center justify-center">
+                  {newSiteImagePreview ? (
+                    <img src={newSiteImagePreview} alt="Preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-[9px] text-ink-400 text-center px-1">No photo</span>
+                  )}
+                </div>
+                <input ref={newSiteImageInputRef} type="file" accept="image/*" hidden onChange={(e) => handleNewSiteImagePick(e.target.files?.[0] ?? null)} />
+                <button type="button" className="btn-secondary h-8 text-xs" onClick={() => newSiteImageInputRef.current?.click()}>
+                  {newSiteImagePreview ? 'Change photo' : 'Add photo (optional)'}
+                </button>
+                <span className="text-[11px] text-ink-400">Max 20 MB · auto-compressed</span>
+              </div>
+
               <div className="flex gap-2 pt-1">
-                <button type="button" className="btn-secondary flex-1 h-9 text-xs" onClick={() => setShowAddSite(false)} disabled={savingSite}>Cancel</button>
+                <button type="button" className="btn-secondary flex-1 h-9 text-xs" onClick={() => { setShowAddSite(false); setNewSiteImageFile(null); setNewSiteImagePreview(null); }} disabled={savingSite}>Cancel</button>
                 <button type="button" className="btn-primary flex-1 h-9 text-xs" onClick={createSite} disabled={savingSite}>{savingSite ? 'Saving…' : 'Save and use'}</button>
               </div>
             </div>
@@ -252,8 +365,11 @@ export function WorkOrderFormModal({
                         type="button"
                         key={s.id}
                         onClick={() => pickSite(s)}
-                        className="w-full text-left px-3 py-2 hover:bg-ink-50 flex items-center justify-between border-b border-ink-50 last:border-0"
+                        className="w-full text-left px-3 py-2 hover:bg-ink-50 flex items-center gap-2.5 border-b border-ink-50 last:border-0"
                       >
+                        <div className="h-8 w-8 rounded overflow-hidden bg-ink-100 shrink-0 flex items-center justify-center">
+                          {s.image_url ? <img src={s.image_url} alt={s.site_name} className="h-full w-full object-cover" /> : <span className="text-[8px] text-ink-400">—</span>}
+                        </div>
                         <div>
                           <div className="text-sm text-ink-800">{s.site_name}</div>
                           {s.address && <div className="text-xs text-ink-500">{s.address}</div>}
