@@ -120,9 +120,9 @@ export function CalendarPage({
   role = 'technician',
 }: {
   onSelect: (w: any) => void;
-  role?: 'admin' | 'supervisor' | 'technician';
+  role?: 'admin' | 'supervisor' | 'technician' | 'coordinador';
 }) {
-  const canEdit = role === 'admin' || role === 'supervisor';
+ const canEdit = role === 'admin' || role === 'supervisor'|| role === 'coordinador';
   return canEdit
     ? <TeamCalendar onSelect={onSelect} role={role} />
     : <MyCalendar onSelect={onSelect} />;
@@ -261,7 +261,7 @@ function MyCalendar({ onSelect }: { onSelect: (w: any) => void }) {
 // Team view (admin / supervisor) — no per-technician rows (scales to
 // any number of technicians). Filter by technician, click a job to edit.
 // ============================================================
-function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'admin' | 'supervisor' }) {
+function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'admin' | 'supervisor'| 'coordinador' }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [orders, setOrders] = useState<any[]>([]);
   const [technicians, setTechnicians] = useState<any[]>([]);

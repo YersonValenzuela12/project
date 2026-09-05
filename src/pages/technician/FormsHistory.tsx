@@ -390,7 +390,7 @@ export function HistoryPage() {
   );
 }
 
-export function AdminFormsPage() {
+export function AdminFormsPage({ readOnly = false }: { readOnly?: boolean } = {}) {
   const { profile } = useAuth();
   const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [subs, setSubs] = useState<any[]>([]);
@@ -482,7 +482,7 @@ export function AdminFormsPage() {
                       </div>
                     ))}
                   </div>
-                  {s.status === 'pending' && (
+                  {s.status === 'pending' && !readOnly && (
                     <div className="flex gap-2">
                       <button className="btn-primary" disabled={actingId === s.id} onClick={() => resolve(s.id, 'approved', s.submitterName, s.form_type)}>
                         {actingId === s.id ? 'Guardando…' : 'Aprobar'}
@@ -491,6 +491,12 @@ export function AdminFormsPage() {
                         Rechazar
                       </button>
                     </div>
+                  )}
+                  {s.status === 'pending' && readOnly && (
+                    <p className="text-xs text-ink-400 italic">Pendiente de aprobación por Administración.</p>
+                  )}
+                  {s.status === 'pending' && readOnly && (
+                    <p className="text-xs text-ink-400 italic">Pendiente de aprobación por Administración.</p>
                   )}
                 </div>
               )}

@@ -10,7 +10,6 @@ import { Avatar } from '@/components/ui';
 import type { Role } from '@/data/mockData';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 
 type NavConfig = { label: string; icon: typeof LayoutDashboard; page: string };
 
@@ -34,10 +33,10 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
     ]},
     { group: 'Sistema', items: [
       { label: 'Auditar Logeos', icon: History, page: 'audit' },
-    
+      { label: 'Configuración', icon: Settings, page: 'settings' },
     ]},
   ],
-  
+
   supervisor: [
     { group: 'Mi Area de Trabajo', items: [
       { label: 'Panel de Control', icon: LayoutDashboard, page: 'dashboard' },
@@ -74,28 +73,21 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
     { group: 'Mi Area de Trabajo', items: [
       { label: 'Panel de Control', icon: LayoutDashboard, page: 'dashboard' },
     ]},
-    { group: 'Planificasión', items: [
-       { label: 'Requerimientos', icon: FileText, page: 'history' },
+    { group: 'Planificación', items: [
       { label: 'Calendario', icon: Calendar, page: 'calendar' },
-     { label: 'Ordenes de trabajo', icon: ClipboardList, page: 'workorders' },
+      { label: 'Ordenes de trabajo', icon: ClipboardList, page: 'workorders' },
     ]},
-     { group: 'Grupos', items: [
+    { group: 'Equipo', items: [
       { label: 'Supervisores', icon: Building2, page: 'supervisors' },
       { label: 'Tecnicos', icon: Wrench, page: 'technicians' },
     ]},
-      { group: 'Atención al equipo', items: [
-      { label: 'atención', icon: Building2, page: 'supervisors' },
-    ]},   
-    { group: 'Recurcursos', items: [
+    { group: 'Recursos', items: [
       { label: 'Documentos', icon: FolderOpen, page: 'documents' },
-      { label: 'Formularios', icon: FormInput, page: 'forms' },
-      { label: 'Reports', icon: BarChart3, page: 'reports' },
+      { label: 'Solicitudes', icon: FormInput, page: 'form_requests' },
+      { label: 'Reportes', icon: BarChart3, page: 'reports' },
     ]},
-
   ],
 };
-
- {/* estaba mas arriba  administrador- grupo de sistema} { label: 'configurar Sistema', icon: Settings, page: 'settings' }, */}
 
 function timeAgo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -112,12 +104,11 @@ interface ShellProps {
   role: Role;
   page: string;
   setPage: (p: string) => void;
-  onSwitchRole: (r: Role) => void;
   onLogout: () => void;
   children: React.ReactNode;
 }
 
-export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }: ShellProps) {
+export function Shell({ role, page, setPage, onLogout, children }: ShellProps) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -164,6 +155,9 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
 
   const roleLabel: Record<Role, string> = {
     admin: 'Administrator', supervisor: 'Supervisor', technician: 'Technician', coordinador: 'Coordinador',
+  };
+  const roleDot: Record<Role, string> = {
+    admin: 'bg-primary-500', supervisor: 'bg-emerald-500', coordinador: 'bg-violet-500', technician: 'bg-amber-500',
   };
 
   return (
@@ -265,7 +259,7 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink-50 border border-ink-200">
-              <span className={cn('h-2 w-2 rounded-full', role === 'admin' ? 'bg-primary-500' : role === 'supervisor' ? 'bg-emerald-500' : 'bg-amber-500')} />
+              <span className={cn('h-2 w-2 rounded-full', roleDot[role])} />
               <span className="text-xs font-semibold text-ink-600">{roleLabel[role]} view</span>
             </div>
 
@@ -342,30 +336,13 @@ export function Shell({ role, page, setPage, onSwitchRole, onLogout, children }:
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
                   <div className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-64 bg-white rounded-xl shadow-pop border border-ink-200 z-40 animate-fade-in overflow-hidden">
-                    {/*}
-                    <div className="px-4 py-3 border-b border-ink-100">
-                      <div className="flex items-center gap-3">
-                        <Avatar initials={userInitials} color={userAvatarColor} size="md" />
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-ink-900 truncate">{userName}</div>
-                          <div className="text-xs text-ink-500 truncate">{userEmail}</div>
-                        </div>
-                      </div>
-                    </div>
-                    */}
-
                     <div className="py-1.5">
                       <MenuItem icon={UserCircle} label="Mi Perfil" onClick={() => { setPage('profile'); setProfileOpen(false); }} />
-                      <MenuItem icon={Calendar} label="Calendario" onClick={() => { setPage('calendar'); setProfileOpen(false); }} />  
-                      <MenuItem icon={FolderOpen} label="Documentos" onClick={() => { setPage('documents'); setProfileOpen(false); }} /> 
-                      <div className="my-1.5 border-t border-ink-100" />
-                      {/*}
-                       <MenuItem icon={Settings} label="Configuración" onClick={() => { setPage('settings'); setProfileOpen(false); }} />
-                      <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-ink-400">Switch role (demo)</div>
-                      <MenuItem icon={ShieldCheck} label="Administrator" active={role === 'admin'} onClick={() => { onSwitchRole('admin'); setProfileOpen(false); }} />
-                      <MenuItem icon={Building2} label="Supervisor" active={role === 'supervisor'} onClick={() => { onSwitchRole('supervisor'); setProfileOpen(false); }} />
-                      <MenuItem icon={Wrench} label="Technician" active={role === 'technician'} onClick={() => { onSwitchRole('technician'); setProfileOpen(false); }} />  
-                      */}
+                      <MenuItem icon={Calendar} label="Calendario" onClick={() => { setPage('calendar'); setProfileOpen(false); }} />
+                      <MenuItem icon={FolderOpen} label="Documentos" onClick={() => { setPage('documents'); setProfileOpen(false); }} />
+                      {role === 'admin' && (
+                        <MenuItem icon={Settings} label="Configuración" onClick={() => { setPage('settings'); setProfileOpen(false); }} />
+                      )}
                       <div className="my-1.5 border-t border-ink-100" />
                       <MenuItem icon={LogOut} label="Salir" onClick={onLogout} danger />
                     </div>

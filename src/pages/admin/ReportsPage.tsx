@@ -147,14 +147,16 @@ export function ReportsPage() {
         title="Reportes y Analítica"
         subtitle="Desempeño operativo e indicadores del equipo"
         breadcrumbs={['Inicio', 'Administrador', 'Reportes']}
+
+      />
+        {/*   estubo dentro de arriba}
         actions={
           <>
             <button className="btn-secondary" onClick={notReady}><FileSpreadsheet size={15} /> Exportar Excel</button>
             <button className="btn-primary" onClick={notReady}><FileDown size={15} /> Exportar PDF</button>
           </>
         }
-      />
-
+   */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard label="Órdenes Totales" value={String(kpis.total)} icon={Clock} />
         <KpiCard label="Completadas" value={String(kpis.completed)} icon={CheckCircle2} />

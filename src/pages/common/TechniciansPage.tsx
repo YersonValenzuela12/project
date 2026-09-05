@@ -49,7 +49,7 @@ export function TechniciansPage({
         title={adminView ? label : `My ${label}`}
         subtitle={`${list.length} ${noun} across your district`}
         breadcrumbs={['Home', adminView ? 'Administrator' : 'Supervisor', label]}
-        actions={<button className="btn-primary" onClick={() => setModalOpen(true)}><Wrench size={15} /> {addLabel}</button>}
+        actions={adminView ? <button className="btn-primary" onClick={() => setModalOpen(true)}><Wrench size={15} /> {addLabel}</button> : undefined}
       />
 
       <div className="mb-4 relative max-w-sm">
@@ -80,7 +80,7 @@ export function TechniciansPage({
                     <div className="text-sm text-ink-500 truncate">{t.title}</div>
                     <div className="flex items-center gap-1.5 text-xs text-ink-500 mt-1"><MapPin size={11} /> {t.region}</div>
                   </div>
-                  <button className="h-8 w-8 rounded-md hover:bg-ink-100 flex items-center justify-center text-ink-400"><MoreVertical size={16} /></button>
+                  {adminView && <button className="h-8 w-8 rounded-md hover:bg-ink-100 flex items-center justify-center text-ink-400"><MoreVertical size={16} /></button>}
                 </div>
                 <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-ink-100 text-center">
                   <div><div className="text-base font-bold text-ink-900">{active.length}</div><div className="text-[11px] text-ink-500">Active</div></div>

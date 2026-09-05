@@ -68,7 +68,7 @@ export function WorkOrdersPage({
   const [editingOrder, setEditingOrder] = useState<any | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
-  const canManage = role === 'admin' || role === 'supervisor';
+  const canManage = role === 'admin' || role === 'supervisor' || role === 'coordinador';
   const isTechView = role === 'technician';
 
   const fetchOrders = async () => {
