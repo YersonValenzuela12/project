@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, Users, ShieldCheck, Calendar, FileText, BarChart3, Settings,
   Bell, Search, ChevronDown, LogOut, UserCircle, HelpCircle, Building2,
-  ClipboardList, History, FolderOpen, FormInput, Wrench, MapPin,
+  ClipboardList, History, FolderOpen, FormInput, Wrench, MapPin, Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/Logo';
@@ -20,7 +20,7 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
     ]},
     { group: 'Administración', items: [
       { label: 'Usuarios', icon: Users, page: 'users' },
-      { label: 'Roles & Permisos', icon: ShieldCheck, page: 'permissions' },
+     
       { label: 'Supervisores', icon: Building2, page: 'supervisors' },
       { label: 'Tecnicos', icon: Wrench, page: 'technicians' },
     ]},
@@ -33,6 +33,7 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
     ]},
     { group: 'Sistema', items: [
       { label: 'Auditar Logeos', icon: History, page: 'audit' },
+        { label: 'Asistencia', icon: Clock, page: 'attendance' },
       { label: 'Configuración', icon: Settings, page: 'settings' },
     ]},
   ],
@@ -47,6 +48,7 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
     ]},
     { group: 'Team', items: [
       { label: 'Tecnicos', icon: Wrench, page: 'technicians' },
+      { label: 'Asistencia', icon: Clock, page: 'attendance' },
     ]},
     { group: 'Recursos', items: [
       { label: 'Documentos', icon: FolderOpen, page: 'documents' },
@@ -57,7 +59,7 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
   technician: [
     { group: 'Mi Area de Trabajo', items: [
       { label: 'Panel de Control', icon: LayoutDashboard, page: 'dashboard' },
-      { label: "trabajos de hoy", icon: ClipboardList, page: 'today' },
+      { label: 'Trabajos de hoy', icon: ClipboardList, page: 'today' },
       { label: 'Calendario', icon: Calendar, page: 'calendar' },
     ]},
     { group: 'Recurcursos', items: [
@@ -65,8 +67,9 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
       { label: 'Formularios', icon: FormInput, page: 'forms' },
     ]},
     { group: 'Seguridad', items: [
-      { label: 'History', icon: History, page: 'history' },
-      { label: 'Profile', icon: UserCircle, page: 'profile' },
+      { label: 'Asistencia', icon: Clock, page: 'attendance' },
+      { label: 'Historial', icon: History, page: 'history' },
+      { label: 'Perfil', icon: UserCircle, page: 'profile' },
     ]},
   ],
   coordinador: [
@@ -80,6 +83,7 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
     { group: 'Equipo', items: [
       { label: 'Supervisores', icon: Building2, page: 'supervisors' },
       { label: 'Tecnicos', icon: Wrench, page: 'technicians' },
+      { label: 'Asistencia', icon: Clock, page: 'attendance' },
     ]},
     { group: 'Recursos', items: [
       { label: 'Documentos', icon: FolderOpen, page: 'documents' },
@@ -87,6 +91,15 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
       { label: 'Reportes', icon: BarChart3, page: 'reports' },
     ]},
   ],
+};
+{/**  { label: 'Roles & Permisos', icon: ShieldCheck, page: 'permissions' },   esto es de admin -administracion */}
+
+const SEARCH_PLACEHOLDER: Record<string, string> = {
+  workorders: 'Search work orders…',
+  today: 'Search work orders…',
+  technicians: 'Search technicians…',
+  supervisors: 'Search supervisors…',
+  users: 'Search users…',
 };
 
 function timeAgo(iso: string) {
@@ -105,10 +118,12 @@ interface ShellProps {
   page: string;
   setPage: (p: string) => void;
   onLogout: () => void;
+  searchQuery: string;
+  onSearchChange: (v: string) => void;
   children: React.ReactNode;
 }
 
-export function Shell({ role, page, setPage, onLogout, children }: ShellProps) {
+export function Shell({ role, page, setPage, onLogout, searchQuery, onSearchChange, children }: ShellProps) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -121,6 +136,7 @@ export function Shell({ role, page, setPage, onLogout, children }: ShellProps) {
   const userInitials = profile?.initials ?? 'U';
   const userAvatarColor = profile?.avatar_color ?? 'bg-primary-600';
   const nav = navByRole[role];
+  const searchPlaceholder = SEARCH_PLACEHOLDER[page] ?? 'Busca ordenes de trabajo, clientes, tecnicos…';
 
   useEffect(() => {
     if (!profile) return;
@@ -251,7 +267,9 @@ export function Shell({ role, page, setPage, onLogout, children }: ShellProps) {
               <div className="relative w-full">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
                 <input
-                  placeholder="Busca ordenes de trabajo, clientes, tecnicos…"
+                  value={searchQuery}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  placeholder={searchPlaceholder}
                   className="w-full h-9 pl-9 pr-4 rounded-lg bg-ink-100 border border-transparent text-sm placeholder:text-ink-400 focus:outline-none focus:bg-white focus:border-primary-300 focus:ring-2 focus:ring-primary-500/20 transition"
                 />
               </div>
@@ -282,12 +300,12 @@ export function Shell({ role, page, setPage, onLogout, children }: ShellProps) {
                     )}
                   >
                     <div className="px-4 py-3 border-b border-ink-100 flex items-center justify-between">
-                      <span className="font-semibold text-sm text-ink-900">Notifications</span>
-                      <span className="chip bg-primary-50 text-primary-700">{unread} new</span>
+                      <span className="font-semibold text-sm text-ink-900">Notificationes</span>
+                      <span className="chip bg-primary-50 text-primary-700">{unread} nuevas</span>
                     </div>
                     <div className="max-h-[60vh] sm:max-h-80 overflow-y-auto">
                       {notifs.length === 0 && (
-                        <div className="px-4 py-8 text-center text-sm text-ink-400">No notifications yet.</div>
+                        <div className="px-4 py-8 text-center text-sm text-ink-400">No hay notificationes .</div>
                       )}
                       {notifs.map((n) => (
                         <div
@@ -308,7 +326,7 @@ export function Shell({ role, page, setPage, onLogout, children }: ShellProps) {
                       onClick={() => { setPage('notifications'); setNotifOpen(false); }}
                       className="w-full py-2.5 text-sm font-medium text-primary-600 hover:bg-primary-50"
                     >
-                      View all notifications
+                      Ver todas las notificationes
                     </button>
                   </div>
                 </>
@@ -325,7 +343,11 @@ export function Shell({ role, page, setPage, onLogout, children }: ShellProps) {
                 onClick={() => { setProfileOpen((o) => !o); setNotifOpen(false); }}
                 className="flex items-center gap-2.5 pl-1.5 pr-2 py-1.5 rounded-lg hover:bg-ink-100 transition"
               >
-                <Avatar initials={userInitials} color={userAvatarColor} size="sm" />
+                 {(profile as any)?.avatar_url ? (
+                  <img src={(profile as any).avatar_url} alt={userName} className="h-8 w-8 rounded-full object-cover" />
+                ) : (
+                  <Avatar initials={userInitials} color={userAvatarColor} size="sm" />
+                )}
                 <div className="hidden sm:block text-left leading-tight">
                   <div className="text-sm font-semibold text-ink-900">{userName}</div>
                   <div className="text-[11px] text-ink-500">{userTitle}</div>

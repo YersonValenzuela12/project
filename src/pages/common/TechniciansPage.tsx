@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Mail, Phone, MapPin, MoreVertical, Wrench } from 'lucide-react';
+import { Mail, Phone, MapPin, MoreVertical, Wrench } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, Avatar, ProgressBar } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -7,14 +7,24 @@ import { supabase } from '@/lib/supabase';
 import { workOrders } from '@/data/mockData';
 import { UserFormModal, type ProfileRow } from '@/components/UserFormModal';
 
+const ROLE_BREADCRUMB: Record<string, string> = {
+  admin: 'Administrator',
+  supervisor: 'Supervisor',
+  coordinador: 'Coordinador',
+  technician: 'Technician',
+};
+
 export function TechniciansPage({
   adminView = false,
   roleFilter = 'technician',
+  role = 'admin',
+  externalQuery = '',
 }: {
   adminView?: boolean;
   roleFilter?: 'technician' | 'supervisor' | 'coordinador';
+  role?: 'admin' | 'supervisor' | 'coordinador' | 'technician';
+  externalQuery?: string;
 }) {
-  const [q, setQ] = useState('');
   const [rows, setRows] = useState<ProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -32,6 +42,7 @@ export function TechniciansPage({
 
   useEffect(() => { fetchPeople(); }, [roleFilter]);
 
+  const q = externalQuery;
   const list = rows.filter((u) =>
     u.full_name?.toLowerCase().includes(q.toLowerCase()) || u.title?.toLowerCase().includes(q.toLowerCase()),
   );
@@ -39,23 +50,17 @@ export function TechniciansPage({
   const handleSaved = () => { setModalOpen(false); fetchPeople(); };
 
   const label = roleFilter === 'supervisor' ? 'Supervisors' : roleFilter === 'coordinador' ? 'Coordinadores' : 'Technicians';
-  const noun = roleFilter === 'supervisor' ? 'supervisors' : roleFilter === 'coordinador' ? 'coordinadores' : 'field technicians';
-  const searchPlaceholder = roleFilter === 'supervisor' ? 'Search supervisors…' : roleFilter === 'coordinador' ? 'Search coordinadores…' : 'Search technicians…';
+  const noun = roleFilter === 'supervisor' ? 'supervisors' : roleFilter === 'coordinador' ? 'coordinadores' : ' technicians';
   const addLabel = roleFilter === 'supervisor' ? 'Add Supervisor' : roleFilter === 'coordinador' ? 'Add Coordinador' : 'Add Technician';
 
   return (
     <div>
       <PageHeader
         title={adminView ? label : `My ${label}`}
-        subtitle={`${list.length} ${noun} across your district`}
-        breadcrumbs={['Home', adminView ? 'Administrator' : 'Supervisor', label]}
+        subtitle={`${list.length} ${noun} se encontro`}
+        breadcrumbs={['Home', ROLE_BREADCRUMB[role] ?? 'Administrator', label]}
         actions={adminView ? <button className="btn-primary" onClick={() => setModalOpen(true)}><Wrench size={15} /> {addLabel}</button> : undefined}
       />
-
-      <div className="mb-4 relative max-w-sm">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={searchPlaceholder} className="input pl-9 h-9" />
-      </div>
 
       {loading ? (
         <div className="text-center text-sm text-ink-500 py-12">Loading {noun}…</div>
@@ -68,6 +73,7 @@ export function TechniciansPage({
             const assigned = workOrders.filter((w) => w.technicianId === t.id);
             const active = assigned.filter((w) => w.status === 'in_progress' || w.status === 'scheduled');
             const completed = assigned.filter((w) => w.status === 'completed').length;
+            const jobsCompleted = assigned.filter((w) => w.technicianId === t.id).length;
             return (
               <Card key={t.id} className="hover:shadow-card-md transition-shadow">
                 <div className="flex items-start gap-3">
@@ -85,7 +91,7 @@ export function TechniciansPage({
                 <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-ink-100 text-center">
                   <div><div className="text-base font-bold text-ink-900">{active.length}</div><div className="text-[11px] text-ink-500">Active</div></div>
                   <div><div className="text-base font-bold text-ink-900">{completed}</div><div className="text-[11px] text-ink-500">Done</div></div>
-                  <div><div className="text-base font-bold text-emerald-600">96%</div><div className="text-[11px] text-ink-500">SLA</div></div>
+                  <div><div className="text-base font-bold text-ink-900">{jobsCompleted}</div><div className="text-[11px] text-ink-500">Trabajos hechos</div></div>
                 </div>
                 <div className="mt-3"><ProgressBar value={Math.min(100, active.length * 30)} barClass="bg-primary-500" /></div>
                 <div className="flex items-center gap-2 mt-4">

@@ -77,7 +77,7 @@ export function SupervisorDashboard({ onSelect, setPage }: { onSelect: (w: any) 
       />
 
       {loading ? (
-        <Card><div className="p-8 text-center text-sm text-ink-500">Loading dashboard…</div></Card>
+        <Card><div className="p-8 text-center text-sm text-ink-500">Cargando panel de supervisor…</div></Card>
       ) : (
       <>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -98,7 +98,7 @@ export function SupervisorDashboard({ onSelect, setPage }: { onSelect: (w: any) 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Today's schedule */}
         <Card className="lg:col-span-2" pad={false}>
-          <div className="p-5 pb-3"><SectionHeader title="Calendario de Hoy" subtitle={`${today.length} jobs scheduled today`} action={<button className="text-sm font-medium text-primary-600" onClick={() => setPage('calendar')}>Open calendar</button>} /></div>
+          <div className="p-5 pb-3"><SectionHeader title="Calendario de Hoy" subtitle={`${today.length} trabajos programados para hoy`} action={<button className="text-sm font-medium text-primary-600" onClick={() => setPage('calendar')}>Abrir calendario</button>} /></div>
           <div className="divide-y divide-ink-50">
             {today.length === 0 && <div className="px-5 py-8 text-center text-sm text-ink-400">Descansando.</div>}
             {today.map((w) => {
@@ -154,7 +154,7 @@ export function SupervisorDashboard({ onSelect, setPage }: { onSelect: (w: any) 
                 </div>
               );
             })}
-            {technicians.length === 0 && <div className="px-5 py-8 text-center text-sm text-ink-400">No technicians found.</div>}
+            {technicians.length === 0 && <div className="px-5 py-8 text-center text-sm text-ink-400">No technicos disponibles.</div>}
           </div>
           <button onClick={() => setPage('technicians')} className="w-full py-2.5 text-sm font-medium text-primary-600 hover:bg-primary-50 border-t border-ink-100 flex items-center justify-center gap-1">View all technicians <ArrowRight size={14} /></button>
         </Card>

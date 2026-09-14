@@ -20,6 +20,7 @@ import { DocumentsPage, ProfilePage } from '@/pages/common/CommonPages';
 import { NotificationsPage, HelpPage } from '@/pages/common/NotificationsHelp';
 import { FullPageLoader } from '@/components/ui';
 import { CoordinadorDashboard } from '@/pages/coordinadorDeOperaciones/CoordinadorDashboard';
+import { AttendancePage, AdminAttendancePage } from '@/pages/common/AttendancePage';
 
 const BREADCRUMB_ROLE_LABEL: Record<Role, string> = {
   admin: 'Administrator',
@@ -31,10 +32,17 @@ const BREADCRUMB_ROLE_LABEL: Record<Role, string> = {
 function App() {
   const { session, profile, loading, signOut } = useAuth();
   const [page, setPage] = useState('dashboard');
+  const [globalQuery, setGlobalQuery] = useState('');
 
   useEffect(() => {
     setPage('dashboard');
   }, [session?.user?.id]);
+
+  // Clear the top search bar whenever the visible screen changes, so a
+  // leftover query from one page doesn't silently filter a different one.
+  useEffect(() => {
+    setGlobalQuery('');
+  }, [page]);
 
   // Intercept the password-recovery link BEFORE any session/login logic.
   // Supabase creates a temporary session when the user lands here from the
@@ -63,17 +71,17 @@ function App() {
         if (role === 'coordinador') return <CoordinadorDashboard setPage={goPage} onAction={() => goPage('workorders')} />;
         return <TechnicianDashboard onSelect={() => setPage('workorders')} setPage={goPage} />;
       case 'today':
-        return <WorkOrdersPage title="Today's Jobs" breadcrumbs={['Home', 'Technician', "Today's Jobs"]} onSelect={() => setPage('workorders')} showAssign={false} />;
+        return <WorkOrdersPage title="Today's Jobs" breadcrumbs={['Home', 'Technician', "Today's Jobs"]} onSelect={() => setPage('workorders')} showAssign={false} externalQuery={globalQuery} />;
       case 'users':
-        return <UsersPage />;
+        return <UsersPage externalQuery={globalQuery} />;
       case 'permissions':
         return <PermissionsPage />;
       case 'supervisors':
-        return <TechniciansPage adminView={role === 'admin'} roleFilter="supervisor" />;
+        return <TechniciansPage adminView={role === 'admin'} roleFilter="supervisor" role={role} externalQuery={globalQuery} />;
       case 'technicians':
-        return <TechniciansPage adminView={role === 'admin'} roleFilter="technician" />;
+        return <TechniciansPage adminView={role === 'admin'} roleFilter="technician" role={role} externalQuery={globalQuery} />;
       case 'workorders':
-        return <WorkOrdersPage breadcrumbs={['Home', BREADCRUMB_ROLE_LABEL[role], 'Work Orders']} onSelect={() => {}} role={role} />;
+        return <WorkOrdersPage breadcrumbs={['Home', BREADCRUMB_ROLE_LABEL[role], 'Work Orders']} onSelect={() => {}} role={role} externalQuery={globalQuery} />;
       case 'calendar':
         return <CalendarPage onSelect={() => setPage('workorders')} role={role} />;
       case 'documents':
@@ -94,6 +102,8 @@ function App() {
         return <ProfilePage />;
       case 'notifications':
         return <NotificationsPage />;
+      case 'attendance':
+        return role === 'admin' ? <AdminAttendancePage /> : <AttendancePage />;
       case 'help':
         return <HelpPage />;
       default:
@@ -107,6 +117,8 @@ function App() {
       page={page}
       setPage={goPage}
       onLogout={() => { void signOut(); }}
+      searchQuery={globalQuery}
+      onSearchChange={setGlobalQuery}
     >
       {renderPage()}
     </Shell>

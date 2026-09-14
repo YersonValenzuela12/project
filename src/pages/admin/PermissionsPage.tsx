@@ -35,11 +35,13 @@ export function PermissionsPage() {
 
   return (
     <div>
+    
       <PageHeader
-        title="Roles & Permissions"
-        subtitle="Define what each role can access and do across modules"
+        title="Roles & Permisos"
+        subtitle="Define que role puede configurar los modulos"
         breadcrumbs={['Home', 'Administrator', 'Roles & Permissions']}
         actions={<button className="btn-primary"><Plus size={15} /> New Role</button>}
+        
       />
 
       {/* Role cards */}
@@ -67,7 +69,7 @@ export function PermissionsPage() {
 
       {/* Module access */}
       <Card className="mb-6">
-        <SectionHeader title={`${activeRole} — Module Access`} subtitle="Toggle which modules this role can open" />
+        <SectionHeader title={`${activeRole} — Acceso a los Modulos `} subtitle="Toggle which modules this role can open" />
         <div className="flex flex-wrap gap-2.5">
           {modules.map((m, i) => {
             const enabled = matrix[activeRole][i].some((v) => v);
@@ -95,7 +97,7 @@ export function PermissionsPage() {
 
       {/* Permission matrix */}
       <Card pad={false} className="overflow-hidden">
-        <div className="p-5 pb-3"><SectionHeader title="Feature Permissions" subtitle={`What the ${activeRole} role can do inside each module`} /></div>
+        <div className="p-5 pb-3"><SectionHeader title="Permisos" subtitle={`Que el ${activeRole} segun los roles puede editar`} /></div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px]">
             <thead className="bg-ink-50/50 border-y border-ink-100">

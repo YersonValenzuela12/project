@@ -110,7 +110,7 @@ export function UserFormModal({
         <div><label className="label">nombre completo</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" /></div>
         <div>
           <label className="label">correo</label>
-          <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jane@selecom.com" disabled={!!user} />
+          <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jane.done@selecom.com" disabled={!!user} />
         </div>
         {!user && (
           <div className="col-span-2">

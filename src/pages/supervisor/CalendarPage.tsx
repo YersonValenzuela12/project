@@ -11,6 +11,12 @@ import { WorkOrderFormModal } from '@/components/WorkOrderFormModal';
 const HOURS = ['08', '09', '10', '11', '12', '13', '14', '15', '16', '17'];
 const hourHeight = 56;
 
+const ROLE_BREADCRUMB: Record<string, string> = {
+  admin: 'Administrator',
+  supervisor: 'Supervisor',
+  coordinador: 'Coordinador',
+};
+
 function getWeekDays(offset: number) {
   const now = new Date();
   const day = now.getDay(); // 0=Sun..6=Sat
@@ -120,11 +126,11 @@ export function CalendarPage({
   role = 'technician',
 }: {
   onSelect: (w: any) => void;
-  role?: 'admin' | 'supervisor' | 'technician'| 'coordinador';
+  role?: 'admin' | 'supervisor' | 'coordinador' | 'technician';
 }) {
-  const canEdit = role === 'admin' || role === 'supervisor';
+  const canEdit = role === 'admin' || role === 'supervisor' || role === 'coordinador';
   return canEdit
-    ? <TeamCalendar onSelect={onSelect} role={role} />
+    ? <TeamCalendar onSelect={onSelect} role={role as 'admin' | 'supervisor' | 'coordinador'} />
     : <MyCalendar onSelect={onSelect} />;
 }
 
@@ -175,11 +181,11 @@ function MyCalendar({ onSelect }: { onSelect: (w: any) => void }) {
       />
 
       <div className="mb-4 flex items-center gap-2 text-xs text-ink-500 bg-ink-50 border border-ink-200 rounded-lg px-3 py-2">
-        <Lock size={13} /> You're viewing your calendar in read-only mode. Only admins and supervisors can reassign or reschedule jobs.
+        <Lock size={13} /> You're viewing your calendar in read-only mode. Only admins, coordinators, and supervisors can reassign or reschedule jobs.
       </div>
 
       {loading ? (
-        <Card><div className="p-8 text-center text-sm text-ink-500">Loading calendar…</div></Card>
+        <Card><div className="p-8 text-center text-sm text-ink-500">mejorando la experiencia de usuario…</div></Card>
       ) : (
         <>
           <DayChips
@@ -258,10 +264,11 @@ function MyCalendar({ onSelect }: { onSelect: (w: any) => void }) {
 }
 
 // ============================================================
-// Team view (admin / supervisor) — no per-technician rows (scales to
-// any number of technicians). Filter by technician, click a job to edit.
+// Team view (admin / supervisor / coordinador) — no per-technician rows
+// (scales to any number of technicians). Filter by technician, click a
+// job to edit.
 // ============================================================
-function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'admin' | 'supervisor' }) {
+function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'admin' | 'supervisor' | 'coordinador' }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [orders, setOrders] = useState<any[]>([]);
   const [technicians, setTechnicians] = useState<any[]>([]);
@@ -293,17 +300,17 @@ function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'a
   return (
     <div>
       <PageHeader
-        title="Weekly Calendar"
-        subtitle={`${weekRangeLabel(days)} · click a job to edit, reassign, or reschedule`}
-        breadcrumbs={['Home', role === 'admin' ? 'Administrator' : 'Supervisor', 'Calendar']}
+        title="Calendario Semanal de Trabajo"
+        subtitle={`${weekRangeLabel(days)} · click para editar, reasignacion de tareas, o reprogramar`}
+        breadcrumbs={['Home', ROLE_BREADCRUMB[role] ?? 'Administrator', 'Calendar']}
         actions={
           <>
             <div className="flex items-center bg-white border border-ink-200 rounded-lg">
               <button onClick={() => setWeekOffset((w) => w - 1)} className="h-9 w-9 flex items-center justify-center text-ink-500 hover:bg-ink-50 rounded-l-lg"><ChevronLeft size={16} /></button>
-              <button onClick={() => setWeekOffset(0)} className="px-3 text-sm font-semibold text-ink-800 hover:bg-ink-50">{weekOffset === 0 ? 'This week' : 'Back to today'}</button>
+              <button onClick={() => setWeekOffset(0)} className="px-3 text-sm font-semibold text-ink-800 hover:bg-ink-50">{weekOffset === 0 ? 'Esta semana' : 'Volver a hoy'}</button>
               <button onClick={() => setWeekOffset((w) => w + 1)} className="h-9 w-9 flex items-center justify-center text-ink-500 hover:bg-ink-50 rounded-r-lg"><ChevronRight size={16} /></button>
             </div>
-            <button className="btn-primary" onClick={() => setCreateOpen(true)}><Plus size={15} /> New Job</button>
+            <button className="btn-primary" onClick={() => setCreateOpen(true)}><Plus size={15} /> nuevo trabajo</button>
           </>
         }
       />
@@ -311,13 +318,13 @@ function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'a
       <div className="mb-4 flex items-center gap-2">
         <Filter size={14} className="text-ink-400" />
         <select value={filterTech} onChange={(e) => setFilterTech(e.target.value)} className="input h-9 w-auto">
-          <option value="all">All technicians ({technicians.length})</option>
+          <option value="all">Todos los tecnicos({technicians.length})</option>
           {technicians.map((t) => <option key={t.id} value={t.id}>{t.full_name}</option>)}
         </select>
       </div>
 
       {loading ? (
-        <Card><div className="p-8 text-center text-sm text-ink-500">Loading calendar…</div></Card>
+        <Card><div className="p-8 text-center text-sm text-ink-500">Mejorando la experiencia de usuario…</div></Card>
       ) : (
         <>
           <DayChips
@@ -402,11 +409,11 @@ function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'a
 function Legend({ editable = false }: { editable?: boolean }) {
   return (
     <div className="mt-4 flex items-center gap-4 flex-wrap text-xs text-ink-600">
-      <span className="font-semibold text-ink-700">Service types:</span>
+      <span className="font-semibold text-ink-700">Tipos de Servicio:</span>
       {(['CCTV', 'Access Control', 'Fire Alarm', 'Fire Water', 'BMS', 'Electronic Security'] as const).map((s) => (
         <span key={s} className="flex items-center gap-1.5"><span className={cn('h-3 w-3 rounded', serviceBg(s))} />{s}</span>
       ))}
-      {editable && <span className="ml-auto text-ink-400">Tip: click a job to reassign, reschedule, or change its status.</span>}
+      {editable && <span className="ml-auto text-ink-400">Consejo: haz clic en un trabajo para reasignarlo, reprogramarlo o cambiar su estado.</span>}
     </div>
   );
 }

@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Search, Filter, Upload, FileText, FileImage, FileSpreadsheet, FileCheck, Download, MoreVertical, FolderOpen,
-  ChevronDown, ChevronRight, X, Trash2, Users, FileDown,
+  ChevronDown, ChevronRight, X, Trash2, Users, FileDown, CalendarCheck2, Camera,
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, Badge, SectionHeader, Avatar } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { serviceColor } from '@/data/mockData';
 import { supabase } from '@/lib/supabase';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 
 
@@ -33,6 +33,30 @@ function guessType(fileName: string) {
   if (['xls', 'xlsx'].includes(ext ?? '')) return 'Schedule';
   if (['png', 'jpg', 'jpeg'].includes(ext ?? '')) return 'Drawing';
   return 'Report';
+}
+
+async function compressImage(file: File, maxWidth = 400, quality = 0.85): Promise<Blob> {
+  const img = document.createElement('img');
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('Could not read image.'));
+      img.src = objectUrl;
+    });
+    const scale = Math.min(1, maxWidth / img.width);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas not supported.');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (!blob) throw new Error('Could not compress image.');
+    return blob;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }
 
 export function DocumentsPage() {
@@ -188,7 +212,7 @@ export function DocumentsPage() {
           >
             <option value="all">Todas las órdenes (biblioteca general)</option>
             {workOrders.map((w) => (
-              <option key={w.id} value={w.id}>{formatWoLabel(w)}{w.site ? ` — ${w.site}` : ''}</option>
+              <option key={w.id} value={w.id}>{formatWoLabel(w)}{w.site && w.site.trim().toLowerCase() !== w.client.trim().toLowerCase() ? ` — ${w.site}` : ''}</option>
             ))}
           </select>
           <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
@@ -203,7 +227,7 @@ export function DocumentsPage() {
           'mb-6 border-2 border-dashed transition',
           canUpload ? 'border-primary-200 bg-primary-50/30 cursor-pointer hover:border-primary-300' : 'border-ink-200 bg-ink-50/30 opacity-60 cursor-not-allowed',
         )}
-       onClick={() => { console.log('Click detectado, canUpload:', canUpload, 'input ref:', fileInputRef.current); canUpload && fileInputRef.current?.click(); }}
+       onClick={() => { canUpload && fileInputRef.current?.click(); }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => { e.preventDefault(); if (canUpload) handleFiles(e.dataTransfer.files); }}
       >
@@ -240,7 +264,15 @@ export function DocumentsPage() {
                       onClick={() => setExpandedUploader(isOpen ? null : uploaderId)}
                       className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-ink-50/50 text-left"
                     >
-                      {u ? <Avatar initials={u.initials} color={u.avatar_color} size="sm" /> : <span className="h-9 w-9 rounded-full bg-ink-200 flex items-center justify-center"><Users size={15} className="text-ink-500" /></span>}
+                      {u ? (
+                        (u as any).avatar_url ? (
+                          <img src={(u as any).avatar_url} alt={u.full_name} className="h-8 w-8 rounded-full object-cover" />
+                        ) : (
+                          <Avatar initials={u.initials} color={u.avatar_color} size="sm" />
+                        )
+                      ) : (
+                        <span className="h-9 w-9 rounded-full bg-ink-200 flex items-center justify-center"><Users size={15} className="text-ink-500" /></span>
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-ink-900">{u?.full_name ?? 'Desconocido'} <span className="text-xs font-normal text-ink-500">· {roleLabelEs[u?.role] ?? '—'}</span></div>
                         <div className="text-xs text-ink-500">{group.length} archivo{group.length === 1 ? '' : 's'} · último {new Date(last.created_at).toLocaleDateString('es-PE')}</div>
@@ -338,37 +370,210 @@ export function DocumentsPage() {
 
 export function ProfilePage() {
   const { profile } = useAuth();
+  const [connecting, setConnecting] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const [editing, setEditing] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [region, setRegion] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  const [jobsCompleted, setJobsCompleted] = useState(0);
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name ?? '');
+      setPhone(profile.phone ?? '');
+      setRegion(profile.region ?? '');
+      setAvatarUrl((profile as any).avatar_url ?? null);
+    }
+  }, [profile?.id]);
+
+  useEffect(() => {
+    if (!profile) return;
+    (async () => {
+      if (profile.role === 'technician') {
+        const { count: primaryCount } = await supabase
+          .from('work_orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('technician_id', profile.id)
+          .eq('status', 'completed');
+
+        const { data: assigneeRows } = await supabase.from('work_order_assignees').select('work_order_id').eq('user_id', profile.id);
+        const assignedIds = (assigneeRows ?? []).map((r: any) => r.work_order_id);
+        let extraCount = 0;
+        if (assignedIds.length > 0) {
+          const { count } = await supabase
+            .from('work_orders')
+            .select('*', { count: 'exact', head: true })
+            .in('id', assignedIds)
+            .eq('status', 'completed')
+            .neq('technician_id', profile.id);
+          extraCount = count ?? 0;
+        }
+        setJobsCompleted((primaryCount ?? 0) + extraCount);
+      } else if (profile.role === 'supervisor') {
+        const { count } = await supabase
+          .from('work_orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('supervisor_id', profile.id)
+          .eq('status', 'completed');
+        setJobsCompleted(count ?? 0);
+      }
+    })();
+  }, [profile?.id, profile?.role]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('google_sync');
+    if (status === 'success') {
+      setSyncMessage({ type: 'success', text: 'Tu cuenta de Google quedó conectada. Ya vas a recibir tus órdenes en tu calendario.' });
+    } else if (status === 'error') {
+      setSyncMessage({ type: 'error', text: 'No se pudo completar la conexión con Google. Intenta de nuevo.' });
+    }
+    if (status) {
+      params.delete('google_sync');
+      const newUrl = window.location.pathname + (params.toString() ? `?${params}` : '');
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
+
   if (!profile) return null;
 
+  const handleAvatarPick = async (file: File | null) => {
+    if (!file || !profile) return;
+    if (file.size > 20 * 1024 * 1024) { setAvatarError('La foto es demasiado grande (máx. 20 MB).'); return; }
+    setAvatarError(null);
+    setUploadingAvatar(true);
+    try {
+      const compressed = await compressImage(file);
+      const path = `${profile.id}/avatar.jpg`;
+      const { error: uploadError } = await supabase.storage.from('Avatars').upload(path, compressed, {
+        contentType: 'image/jpeg',
+        upsert: true,
+      });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from('Avatars').getPublicUrl(path);
+      const urlWithCacheBust = `${data.publicUrl}?t=${Date.now()}`;
+      const { error: dbError } = await supabase.from('profiles').update({ avatar_url: urlWithCacheBust }).eq('id', profile.id);
+      if (dbError) throw dbError;
+      setAvatarUrl(urlWithCacheBust);
+    } catch (e: any) {
+      setAvatarError(e.message ?? 'No se pudo subir la foto.');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    setProfileSaveError(null);
+    setProfileSaved(false);
+    const { error } = await supabase.from('profiles').update({
+      full_name: fullName,
+      phone,
+      region,
+    }).eq('id', profile.id);
+    setSavingProfile(false);
+    if (error) { setProfileSaveError(error.message); return; }
+    setEditing(false);
+    setProfileSaved(true);
+    setTimeout(() => setProfileSaved(false), 2500);
+  };
+
+  const handleCancelEdit = () => {
+    setFullName(profile.full_name ?? '');
+    setPhone(profile.phone ?? '');
+    setRegion(profile.region ?? '');
+    setProfileSaveError(null);
+    setEditing(false);
+  };
+
   const user = {
-    name: profile.full_name,
+    name: fullName,
     email: profile.email,
     title: profile.title,
-    phone: profile.phone,
-    region: profile.region,
+    phone,
+    region,
     initials: profile.initials,
     color: profile.avatar_color,
     joined: profile.last_login ?? 'N/A',
-    jobsCompleted: 0,
-    avgRating: 0,
-    slaRate: 0,
+    googleSyncEnabled: (profile as any).google_sync_enabled ?? false,
   };
+
+  const showJobsStat = profile.role === 'technician' || profile.role === 'supervisor';
+
+  const handleConnectGoogle = async () => {
+    setConnecting(true);
+    setSyncMessage(null);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-oauth-start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+    });
+    const json = await res.json();
+    if (!res.ok || !json.url) {
+      setConnecting(false);
+      setSyncMessage({ type: 'error', text: json.error || 'No se pudo iniciar la conexión con Google.' });
+      return;
+    }
+    window.location.href = json.url;
+  };
+
   return (
     <div>
       <PageHeader title="Mi Perfil" subtitle="Información personal, desempeño y preferencias" breadcrumbs={['Home', 'Profile']} />
 
+      {syncMessage && (
+        <div className={cn(
+          'mb-4 rounded-lg border px-4 py-3 text-sm',
+          syncMessage.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700',
+        )}>
+          {syncMessage.text}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <Card className="lg:col-span-1">
           <div className="flex flex-col items-center text-center py-2">
-            <Avatar initials={user.initials} color={user.color} size="lg" />
+            <div className="relative">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={user.name} className="h-20 w-20 rounded-full object-cover border border-ink-200" />
+              ) : (
+                <Avatar initials={user.initials} color={user.color} size="lg" />
+              )}
+              <input ref={avatarInputRef} type="file" accept="image/*" hidden onChange={(e) => handleAvatarPick(e.target.files?.[0] ?? null)} />
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-primary-600 hover:bg-primary-700 text-white flex items-center justify-center shadow-sm border-2 border-white"
+                title="Cambiar foto de perfil"
+              >
+                <Camera size={13} />
+              </button>
+            </div>
+            {uploadingAvatar && <p className="text-xs text-ink-400 mt-2">Subiendo foto…</p>}
+            {avatarError && <p className="text-xs text-red-600 mt-2">{avatarError}</p>}
             <h2 className="text-lg font-bold text-ink-900 mt-3">{user.name}</h2>
             <p className="text-sm text-ink-500">{user.title}</p>
             <Badge className="bg-emerald-50 text-emerald-700 mt-2">Active</Badge>
-            <div className="grid grid-cols-3 gap-2 w-full mt-5 pt-4 border-t border-ink-100">
-              <Stat label="Jobs" value={user.jobsCompleted} />
-              <Stat label="Rating" value={user.avgRating} />
-              <Stat label="SLA" value={`${user.slaRate}%`} />
-            </div>
+            {showJobsStat && (
+              <div className="w-full mt-5 pt-4 border-t border-ink-100">
+                <Stat label="Trabajos completados" value={jobsCompleted} />
+              </div>
+            )}
           </div>
           <div className="mt-4 pt-4 border-t border-ink-100 space-y-2.5">
             <InfoLine label="Correo" value={user.email} />
@@ -380,19 +585,71 @@ export function ProfilePage() {
 
         <div className="lg:col-span-2 space-y-5">
           <Card>
-            <SectionHeader title="Información Personal" action={<button className="btn-secondary h-8 text-xs">Edit</button>} />
+            <SectionHeader
+              title="Información Personal"
+              action={
+                editing ? (
+                  <div className="flex gap-2">
+                    <button className="btn-secondary h-8 text-xs" onClick={handleCancelEdit} disabled={savingProfile}>Cancelar</button>
+                    <button className="btn-primary h-8 text-xs" onClick={handleSaveProfile} disabled={savingProfile}>{savingProfile ? 'Guardando…' : 'Guardar'}</button>
+                  </div>
+                ) : (
+                  <button className="btn-secondary h-8 text-xs" onClick={() => setEditing(true)}>Edit</button>
+                )
+              }
+            />
+            {profileSaveError && (
+              <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">{profileSaveError}</div>
+            )}
+            {profileSaved && (
+              <div className="mb-3 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-700">Cambios guardados ✓</div>
+            )}
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Nombre completo</label><input className="input" defaultValue={user.name} /></div>
-              <div><label className="label">Correo Electrónico</label><input className="input" defaultValue={user.email} /></div>
-              <div><label className="label">Telefono</label><input className="input" defaultValue={user.phone} /></div>
-              <div><label className="label">Distrito</label><input className="input" defaultValue={user.region} /></div>
+              <div>
+                <label className="label">Nombre completo</label>
+                <input className="input disabled:bg-ink-50 disabled:text-ink-500" value={fullName} onChange={(e) => setFullName(e.target.value)} disabled={!editing} />
+              </div>
+              <div>
+                <label className="label">Correo Electrónico</label>
+                <input className="input bg-ink-50 text-ink-500" value={user.email} disabled title="Para cambiar tu correo, contacta a tu administrador" />
+              </div>
+              <div>
+                <label className="label">Telefono</label>
+                <input className="input disabled:bg-ink-50 disabled:text-ink-500" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={!editing} />
+              </div>
+              <div>
+                <label className="label">Distrito</label>
+                <input className="input disabled:bg-ink-50 disabled:text-ink-500" value={region} onChange={(e) => setRegion(e.target.value)} disabled={!editing} />
+              </div>
             </div>
+            {!editing && <p className="text-xs text-ink-400 mt-3">El correo no se puede cambiar desde aquí — pide a tu administrador si necesitas actualizarlo.</p>}
           </Card>
           <Card>
             <SectionHeader title="Seguridad" />
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 rounded-lg bg-ink-50"><div><div className="text-sm font-medium text-ink-900">Contraseña</div><div className="text-xs text-ink-500">Last changed 41 days ago</div></div><button className="btn-secondary h-8 text-xs">Change</button></div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50/50"><div><div className="text-sm font-medium text-ink-900">doble autenticasion</div><div className="text-xs text-ink-500">Enabled via authenticator app</div></div><Badge className="bg-emerald-50 text-emerald-700">On</Badge></div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-ink-50">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-white border border-ink-200 flex items-center justify-center shrink-0"><CalendarCheck2 size={16} className="text-ink-500" /></div>
+                  <div>
+                    <div className="text-sm font-medium text-ink-900 flex items-center gap-1.5">
+                      Sincronización con Google Calendar
+                      <span className={cn('h-2 w-2 rounded-full', user.googleSyncEnabled ? 'bg-emerald-500' : 'bg-ink-300')} />
+                    </div>
+                    <div className="text-xs text-ink-500">
+                      {user.googleSyncEnabled ? 'Conectado — tus órdenes se agregan a tu calendario' : 'No conectado'}
+                    </div>
+                  </div>
+                </div>
+                {user.googleSyncEnabled ? (
+                  <span className="text-xs text-ink-400">Para desconectar, pide a tu administrador</span>
+                ) : (
+                  <button className="btn-secondary h-8 text-xs" onClick={handleConnectGoogle} disabled={connecting}>
+                    {connecting ? 'Conectando…' : 'Conectar con Google'}
+                  </button>
+                )}
+              </div>
             </div>
           </Card>
           <Card>

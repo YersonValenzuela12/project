@@ -61,18 +61,18 @@ export function NotificationsPage() {
 
   return (
     <div>
-      <PageHeader title="Notifications" subtitle="All your alerts and updates in one place" breadcrumbs={['Home', 'Notifications']} actions={<button className="btn-secondary" onClick={markAllRead}><CheckCircle2 size={15} /> Mark all read</button>} />
+      <PageHeader title="Notificationes" subtitle="Todas tus alertas y actualizaciones en un solo lugar" breadcrumbs={['Home', 'Notifications']} actions={<button className="btn-secondary" onClick={markAllRead}><CheckCircle2 size={15} /> Marcar todo leido</button>} />
       <Card pad={false}>
         <div className="p-4 border-b border-ink-100 flex items-center gap-3 flex-wrap">
-          <div className="relative flex-1 min-w-[220px]"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search notifications…" className="input pl-9 h-9" /></div>
-          <button className="btn-secondary h-9"><Filter size={14} /> Filter</button>
+          <div className="relative flex-1 min-w-[220px]"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="buscar notificationes…" className="input pl-9 h-9" /></div>
+          <button className="btn-secondary h-9"><Filter size={14} /> Filtrar</button>
         </div>
-        <div className="px-4 pt-3"><Tabs tabs={['All', 'Unread', 'Work Orders', 'System']} active={tab} onChange={setTab} /></div>
+        <div className="px-4 pt-3"><Tabs tabs={['Todos', 'No leidos', 'Ordenes de trabajo', 'Sistema']} active={tab} onChange={setTab} /></div>
         <div className="divide-y divide-ink-50 mt-2">
           {loading ? (
-            <div className="px-5 py-10 text-center text-sm text-ink-500">Loading…</div>
+            <div className="px-5 py-10 text-center text-sm text-ink-500">Mejorando la experiencia de usuario…</div>
           ) : filtered.length === 0 ? (
-            <div className="px-5 py-10 text-center text-sm text-ink-400">No notifications here.</div>
+            <div className="px-5 py-10 text-center text-sm text-ink-400">No hay notificationes.</div>
           ) : filtered.map((n) => (
             <div key={n.id} onClick={() => markRead(n)} className={cn('flex items-start gap-4 px-5 py-4 hover:bg-ink-50/40 cursor-pointer', n.unread && 'bg-primary-50/30')}>
               <span className={cn('h-9 w-9 rounded-lg flex items-center justify-center text-white shrink-0', n.color ?? 'bg-primary-500')}><Bell size={16} /></span>
@@ -120,7 +120,7 @@ export function HelpPage() {
         <div className="divide-y divide-ink-50">
           {['How to create and assign a work order', 'Understanding work order statuses', 'Submitting a completed job checklist', 'Uploading before/after photos', 'Requesting medical leave', 'Reading your weekly schedule'].map((a, i) => (
             <a key={i} className="flex items-center justify-between py-3 hover:bg-ink-50/40 px-2 cursor-pointer">
-              <span className="text-sm text-ink-800">{a}</span><span className="text-xs text-primary-600 font-medium">Read →</span>
+              <span className="text-sm text-ink-800">{a}</span><span className="text-xs text-primary-600 font-medium">Leer →</span>
             </a>
           ))}
         </div>

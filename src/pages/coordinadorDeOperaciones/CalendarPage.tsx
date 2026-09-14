@@ -85,7 +85,7 @@ function DayChips({
 function AgendaList({ orders, onSelect, techMap }: { orders: any[]; onSelect: (w: any) => void; techMap?: Map<string, any> }) {
   const sorted = [...orders].sort((a, b) => (a.scheduled_time ?? '').localeCompare(b.scheduled_time ?? ''));
   if (sorted.length === 0) {
-    return <div className="md:hidden p-8 text-center text-sm text-ink-400 bg-white rounded-xl border border-ink-100">No jobs scheduled this day.</div>;
+    return <div className="md:hidden p-8 text-center text-sm text-ink-400 bg-white rounded-xl border border-ink-100">No hay trbajos hoy.</div>;
   }
   return (
     <div className="md:hidden space-y-2">
@@ -293,17 +293,17 @@ function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'a
   return (
     <div>
       <PageHeader
-        title="Weekly Calendar"
-        subtitle={`${weekRangeLabel(days)} · click a job to edit, reassign, or reschedule`}
+        title="Calendario Semanal de Trabajo"
+        subtitle={`${weekRangeLabel(days)} · click para editar, reasignacion de tareas, o reprogramar`}
         breadcrumbs={['Home', role === 'admin' ? 'Administrator' : 'Supervisor', 'Calendar']}
         actions={
           <>
             <div className="flex items-center bg-white border border-ink-200 rounded-lg">
               <button onClick={() => setWeekOffset((w) => w - 1)} className="h-9 w-9 flex items-center justify-center text-ink-500 hover:bg-ink-50 rounded-l-lg"><ChevronLeft size={16} /></button>
-              <button onClick={() => setWeekOffset(0)} className="px-3 text-sm font-semibold text-ink-800 hover:bg-ink-50">{weekOffset === 0 ? 'This week' : 'Back to today'}</button>
+              <button onClick={() => setWeekOffset(0)} className="px-3 text-sm font-semibold text-ink-800 hover:bg-ink-50">{weekOffset === 0 ? 'Esta semana' : 'Volver a hoy'}</button>
               <button onClick={() => setWeekOffset((w) => w + 1)} className="h-9 w-9 flex items-center justify-center text-ink-500 hover:bg-ink-50 rounded-r-lg"><ChevronRight size={16} /></button>
             </div>
-            <button className="btn-primary" onClick={() => setCreateOpen(true)}><Plus size={15} /> New Job</button>
+            <button className="btn-primary" onClick={() => setCreateOpen(true)}><Plus size={15} /> nuevo trabajo</button>
           </>
         }
       />
@@ -311,7 +311,7 @@ function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'a
       <div className="mb-4 flex items-center gap-2">
         <Filter size={14} className="text-ink-400" />
         <select value={filterTech} onChange={(e) => setFilterTech(e.target.value)} className="input h-9 w-auto">
-          <option value="all">All technicians ({technicians.length})</option>
+          <option value="all">Todos los tecnicos ({technicians.length})</option>
           {technicians.map((t) => <option key={t.id} value={t.id}>{t.full_name}</option>)}
         </select>
       </div>

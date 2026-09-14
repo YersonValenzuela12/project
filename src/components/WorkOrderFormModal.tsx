@@ -281,6 +281,22 @@ export function WorkOrderFormModal({
         related_work_order_id: orderId,
       }));
       await supabase.from('notifications').insert(notifRows);
+
+      // Sync to Google Calendar for anyone who has it connected (best-effort, doesn't block saving)
+      try {
+        const { data: { session: googleSession } } = await supabase.auth.getSession();
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-calendar-event`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${googleSession?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ work_order_id: orderId, user_ids: selectedIds }),
+        });
+      } catch (e) {
+        console.error('Google Calendar sync failed:', e);
+      }
     }
 
     setSaving(false);
@@ -290,7 +306,7 @@ export function WorkOrderFormModal({
   return (
     <Modal
       open onClose={onClose}
-      title={isEdit ? `Edit Work Order — ${order.code}` : 'Create Work Order'}
+      title={isEdit ? `Edita Ordernes de Trabajo — ${order.code}` : 'Crear nuevo trabajo'}
       size="lg"
       footer={<>
         <button className="btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
@@ -303,7 +319,7 @@ export function WorkOrderFormModal({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
-          <label className="label">Client / Site</label>
+          <label className="label">Cliente / Lugar</label>
 
           {client && site && !showAddSite ? (
             <div className="rounded-lg border border-ink-200 bg-ink-50 px-3 py-2.5">
@@ -316,8 +332,10 @@ export function WorkOrderFormModal({
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-ink-900">{client}</div>
-                  <div className="text-xs text-ink-500">{site}</div>
+                    <div className="text-sm font-medium text-ink-900">{client}</div>
+                         {site && site.trim().toLowerCase() !== client.trim().toLowerCase() && (
+                    <div className="text-xs text-ink-500">{site}</div>
+                    )}
                 </div>
                 <button type="button" onClick={changeSite} className="text-xs font-semibold text-primary-600 hover:text-primary-700 shrink-0">Change</button>
               </div>
@@ -355,7 +373,7 @@ export function WorkOrderFormModal({
             </div>
           ) : (
             <>
-              <input className="input mb-2" value={siteQuery} onChange={(e) => setSiteQuery(e.target.value)} placeholder="Search client or building…" />
+              <input className="input mb-2" value={siteQuery} onChange={(e) => setSiteQuery(e.target.value)} placeholder="Buscar el cliente o crear…" />
               <div className="border border-ink-200 rounded-lg max-h-48 overflow-y-auto">
                 {Object.entries(groupedSites).map(([clientName, group]) => (
                   <div key={clientName}>
@@ -380,19 +398,19 @@ export function WorkOrderFormModal({
                 ))}
                 {filteredSites.length === 0 && <div className="px-3 py-4 text-sm text-ink-400 text-center">No sites found.</div>}
               </div>
-              <button type="button" className="btn-secondary w-full mt-2 h-9 text-xs" onClick={() => setShowAddSite(true)}>+ Add new site</button>
+              <button type="button" className="btn-secondary w-full mt-2 h-9 text-xs" onClick={() => setShowAddSite(true)}>+ Agregar nuevo sitio</button>
             </>
           )}
         </div>
 
         <div>
-          <label className="label">Service type</label>
+          <label className="label">Tipo de Servicio</label>
           <select className="input" value={serviceType} onChange={(e) => setServiceType(e.target.value)}>
             {SERVICE_TYPES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>
-          <label className="label">Priority</label>
+          <label className="label">Prioridad</label>
           <select className="input" value={priority} onChange={(e) => setPriority(e.target.value)}>
             {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
@@ -413,15 +431,15 @@ export function WorkOrderFormModal({
           </>
         )}
 
-        <div><label className="label">Scheduled date</label><input type="date" className="input" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} /></div>
-        <div><label className="label">Scheduled time</label><input type="time" className="input" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} /></div>
-        <div><label className="label">Duration (hrs)</label><input type="number" min={0.5} step={0.5} className="input" value={durationHrs} onChange={(e) => setDurationHrs(Number(e.target.value))} /></div>
-        <div><label className="label">Equipment</label><input className="input" value={equipment} onChange={(e) => setEquipment(e.target.value)} placeholder="Optional" /></div>
-        <div className="col-span-2"><label className="label">Description</label><textarea className="input" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What needs to be done…" /></div>
+        <div><label className="label">Fecha programada</label><input type="date" className="input" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} /></div>
+        <div><label className="label">Hora programada</label><input type="time" className="input" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} /></div>
+        <div><label className="label">Duracion (hrs)</label><input type="number" min={0.5} step={0.5} className="input" value={durationHrs} onChange={(e) => setDurationHrs(Number(e.target.value))} /></div>
+        <div><label className="label">Equipos</label><input className="input" value={equipment} onChange={(e) => setEquipment(e.target.value)} placeholder="Optional" /></div>
+        <div className="col-span-2"><label className="label">Descripción</label><textarea className="input" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="¿Qué necesitas hacer…" /></div>
       </div>
 
       <div className="mt-5">
-        <label className="label">Assign technicians / supervisors</label>
+        <label className="label">Assignacion de tecnicos / supervisores</label>
         <div className="border border-ink-200 rounded-lg max-h-48 overflow-y-auto divide-y divide-ink-50">
           {people.map((p) => (
             <label key={p.id} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-ink-50">
@@ -433,7 +451,7 @@ export function WorkOrderFormModal({
           ))}
           {people.length === 0 && <div className="px-3 py-4 text-sm text-ink-400 text-center">No technicians or supervisors found.</div>}
         </div>
-        <p className="text-xs text-ink-400 mt-1.5">The first selected technician becomes the primary assignee shown in lists and the calendar.</p>
+        <p className="text-xs text-ink-400 mt-1.5">La seleccion de tecnicos se mostrara en el calendario.</p>
       </div>
     </Modal>
   );

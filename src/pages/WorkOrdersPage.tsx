@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Search, Filter, FilePlus2, MapPin, Clock, ChevronRight, Users as UsersIcon, Wrench, Navigation, Check,
+  Filter, FilePlus2, MapPin, Clock, ChevronRight, Users as UsersIcon, Wrench, Navigation, Check,
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, Avatar, Badge, ProgressBar } from '@/components/ui';
@@ -11,22 +11,22 @@ import {
 import { supabase } from '@/lib/supabase';
 import { WorkOrderFormModal } from '@/components/WorkOrderFormModal';
 
-type View = 'table' | 'kanban';
+type View = 'tabla' | 'kanban';
 type DateFilter = 'today' | 'tomorrow' | 'week' | 'all';
 
 const COLUMNS: { key: WOStatus; label: string; color: string }[] = [
-  { key: 'open', label: 'Open', color: 'border-t-ink-300' },
-  { key: 'scheduled', label: 'Scheduled', color: 'border-t-primary-400' },
-  { key: 'in_progress', label: 'In Progress', color: 'border-t-blue-400' },
-  { key: 'paused', label: 'Paused', color: 'border-t-amber-400' },
-  { key: 'completed', label: 'Completed', color: 'border-t-emerald-400' },
+  { key: 'open', label: 'Abierto', color: 'border-t-ink-300' },
+  { key: 'scheduled', label: 'Programado', color: 'border-t-primary-400' },
+  { key: 'in_progress', label: 'En Progreso', color: 'border-t-blue-400' },
+  { key: 'paused', label: 'Pausado', color: 'border-t-amber-400' },
+  { key: 'completed', label: 'Completado', color: 'border-t-emerald-400' },
 ];
 
 const DATE_FILTERS: { key: DateFilter; label: string }[] = [
-  { key: 'today', label: 'Today' },
-  { key: 'tomorrow', label: 'Tomorrow' },
-  { key: 'week', label: 'This week' },
-  { key: 'all', label: 'All' },
+  { key: 'today', label: 'Hoy' },
+  { key: 'tomorrow', label: 'Mañana' },
+  { key: 'week', label: 'Esta semana' },
+  { key: 'all', label: 'Todo' },
 ];
 
 function isoToday() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString().slice(0, 10); }
@@ -46,22 +46,23 @@ function mapsUrl(w: any) {
 }
 
 export function WorkOrdersPage({
-  title = 'Work Orders',
+  title = 'Ordenes de Trabajo',
   breadcrumbs,
   onSelect,
   showAssign = true,
   role = 'technician',
+  externalQuery = '',
 }: {
   title?: string;
   breadcrumbs: string[];
   onSelect: (w: any) => void;
   showAssign?: boolean;
-  role?: 'admin' | 'supervisor' | 'technician'| 'coordinador';
+  role?: 'admin' | 'supervisor' | 'coordinador' | 'technician';
+  externalQuery?: string;
 }) {
-  const [q, setQ] = useState('');
   const [status, setStatus] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
-  const [view, setView] = useState<View>('table');
+  const [view, setView] = useState<View>('tabla');
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -70,6 +71,7 @@ export function WorkOrdersPage({
 
   const canManage = role === 'admin' || role === 'supervisor' || role === 'coordinador';
   const isTechView = role === 'technician';
+  const q = externalQuery;
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -143,14 +145,14 @@ export function WorkOrdersPage({
     <div>
       <PageHeader
         title={title}
-        subtitle={`${filtered.length} work orders · updated just now`}
+        subtitle={`${filtered.length} ordenes de trabajo · Actualizado ahora`}
         breadcrumbs={breadcrumbs}
-        actions={canManage ? <button className="btn-primary" onClick={() => setCreateOpen(true)}><FilePlus2 size={15} /> Create Work Order</button> : undefined}
+        actions={canManage ? <button className="btn-primary" onClick={() => setCreateOpen(true)}><FilePlus2 size={15} /> Crear Orden de Trabajo</button> : undefined}
       />
 
       {isTechView ? (
         <>
-          <div className="flex gap-1.5 mb-3">
+          <div className="flex gap-1.5 mb-4">
             {DATE_FILTERS.map((f) => (
               <button
                 key={f.key}
@@ -164,15 +166,11 @@ export function WorkOrdersPage({
               </button>
             ))}
           </div>
-          <div className="relative mb-4">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by client or code…" className="input pl-9 h-10" />
-          </div>
 
           {loading ? (
-            <Card><div className="p-8 text-center text-sm text-ink-500">Loading work orders…</div></Card>
+            <Card><div className="p-8 text-center text-sm text-ink-500">Cargando ordenes de trabajo…</div></Card>
           ) : filtered.length === 0 ? (
-            <Card><div className="p-8 text-center text-sm text-ink-500">No work orders for this filter.</div></Card>
+            <Card><div className="p-8 text-center text-sm text-ink-500">No hay ordenes de trabajo para este filtro.</div></Card>
           ) : (
             <div className="space-y-2.5">
               {filtered.map((w) => {
@@ -194,7 +192,7 @@ export function WorkOrdersPage({
                     </div>
                     <div className="flex items-center gap-2 mt-3">
                       {isDone ? (
-                        <Badge className="bg-ink-100 text-ink-500"><Check size={11} className="inline mr-1" />Completed</Badge>
+                        <Badge className="bg-ink-100 text-ink-500"><Check size={11} className="inline mr-1" />Completado</Badge>
                       ) : (
                         <Badge className={statusColor(w.status)}>{statusLabel(w.status)}</Badge>
                       )}
@@ -219,38 +217,34 @@ export function WorkOrdersPage({
       ) : (
         <Card pad={false} className="overflow-hidden">
           <div className="p-4 border-b border-ink-100 flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 min-w-[220px]">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search work orders…" className="input pl-9 h-9" />
-            </div>
             <select value={status} onChange={(e) => setStatus(e.target.value)} className="input h-9 w-auto">
-              <option value="all">All statuses</option>
-              <option value="open">Open</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="in_progress">In Progress</option>
-              <option value="paused">Paused</option>
-              <option value="completed">Completed</option>
+              <option value="all">Todos los estados</option>
+              <option value="open">Abierto</option>
+              <option value="scheduled">Programado</option>
+              <option value="in_progress">En Progreso</option>
+              <option value="paused">Pausado</option>
+              <option value="completed">Completado</option>
             </select>
-            <button className="btn-secondary h-9"><Filter size={14} /> Filters</button>
-            <div className="flex bg-ink-50 rounded-lg p-1">
-              <button onClick={() => setView('table')} className={cn('px-3 py-1.5 rounded-md text-xs font-semibold', view === 'table' ? 'bg-white shadow-sm text-ink-900' : 'text-ink-500')}>Table</button>
+            <button className="btn-secondary h-9"><Filter size={14} /> Filtros</button>
+            <div className="flex bg-ink-50 rounded-lg p-1 ml-auto">
+              <button onClick={() => setView('tabla')} className={cn('px-3 py-1.5 rounded-md text-xs font-semibold', view === 'tabla' ? 'bg-white shadow-sm text-ink-900' : 'text-ink-500')}>Tabla</button>
               <button onClick={() => setView('kanban')} className={cn('px-3 py-1.5 rounded-md text-xs font-semibold', view === 'kanban' ? 'bg-white shadow-sm text-ink-900' : 'text-ink-500')}>Kanban</button>
             </div>
           </div>
 
           {loading ? (
-            <div className="p-8 text-center text-sm text-ink-500">Loading work orders…</div>
+            <div className="p-8 text-center text-sm text-ink-500">Cargando ordenes de trabajo…</div>
           ) : filtered.length === 0 ? (
-            <div className="p-8 text-center text-sm text-ink-500">No work orders yet.</div>
-          ) : view === 'table' ? (
+            <div className="p-8 text-center text-sm text-ink-500">No hay ordenes de trabajo aún.</div>
+          ) : view === 'tabla' ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[960px]">
                 <thead className="bg-ink-50/50 border-b border-ink-100">
                   <tr>
-                    <th className="th">Work order</th><th className="th">Client / Site</th><th className="th">Service</th>
-                    <th className="th">Priority</th><th className="th">Status</th>
-                    {showAssign && <th className="th">Assigned</th>}
-                    <th className="th">Scheduled</th><th className="th">Progress</th><th className="th w-10"></th>
+                    <th className="th">Ordenes de Trabajo</th><th className="th">Cliente / Lugar</th><th className="th">Servicios</th>
+                    <th className="th">Prioridad</th><th className="th">Estado</th>
+                    {showAssign && <th className="th">Assignado</th>}
+                    <th className="th">Programado</th><th className="th">Progreso</th><th className="th w-10"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink-50">

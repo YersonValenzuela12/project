@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Search, Filter, UserPlus, MoreVertical, Mail, Pencil, Trash2, ShieldCheck, KeyRound,
+  Filter, UserPlus, MoreVertical, Mail, Pencil, Trash2, ShieldCheck, KeyRound, CalendarX2, CalendarCheck2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, Avatar, Badge } from '@/components/ui';
@@ -16,14 +16,15 @@ const roleBadge: Record<Role, string> = {
   coordinador: 'bg-violet-50 text-violet-700',
 };
 
-export function UsersPage() {
+export function UsersPage({ externalQuery = '' }: { externalQuery?: string }) {
   const [rows, setRows] = useState<ProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editUser, setEditUser] = useState<ProfileRow | null>(null);
   const [resetPwUser, setResetPwUser] = useState<ProfileRow | null>(null);
+  const [changeEmailUser, setChangeEmailUser] = useState<ProfileRow | null>(null);
+  const [disconnectUser, setDisconnectUser] = useState<ProfileRow | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
 
   const fetchUsers = async () => {
@@ -35,6 +36,7 @@ export function UsersPage() {
 
   useEffect(() => { fetchUsers(); }, []);
 
+  const q = externalQuery;
   const filtered = rows.filter((u) =>
     (filterRole === 'all' || u.role === filterRole) &&
     (u.full_name?.toLowerCase().includes(q.toLowerCase()) || u.email?.toLowerCase().includes(q.toLowerCase())),
@@ -63,12 +65,8 @@ export function UsersPage() {
       <Card pad={false} className="overflow-hidden">
         {/* Toolbar */}
         <div className="p-4 border-b border-ink-100 flex items-center gap-3 flex-wrap">
-          <div className="relative flex-1 min-w-[220px]">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre o email…" className="input pl-9 h-9" />
-          </div>
           <div className="flex items-center gap-1.5 bg-ink-50 rounded-lg p-1">
-            {['all', 'admin', 'supervisor','coordinador', 'technician'].map((r) => (
+            {['all', 'admin', 'supervisor', 'coordinador', 'technician'].map((r) => (
               <button
                 key={r}
                 onClick={() => setFilterRole(r)}
@@ -76,16 +74,16 @@ export function UsersPage() {
               >{r}</button>
             ))}
           </div>
-          <button className="btn-secondary h-9"><Filter size={14} /> Filters</button>
+          <button className="btn-secondary h-9 ml-auto"><Filter size={14} /> Filters</button>
         </div>
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px]">
+          <table className="w-full min-w-[860px]">
             <thead className="bg-ink-50/50 border-b border-ink-100">
               <tr>
                 <th className="th">Usuario</th><th className="th">Rol</th><th className="th">Titulo</th>
-                <th className="th">Distrito</th><th className="th">Estado</th><th className="th w-10"></th>
+                <th className="th">Distrito</th><th className="th">Estado</th><th className="th">Google</th><th className="th w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-50">
@@ -93,11 +91,17 @@ export function UsersPage() {
                 <tr><td colSpan={7} className="td text-center text-ink-500 py-8">Loading users…</td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={7} className="td text-center text-ink-500 py-8">No users found.</td></tr>
-              ) : filtered.map((u) => (
+              ) : filtered.map((u) => {
+                const googleSynced = !!(u as any).google_sync_enabled;
+                return (
                 <tr key={u.id} className="hover:bg-ink-50/40">
                   <td className="td">
                     <div className="flex items-center gap-3">
-                      <Avatar initials={u.initials} color={u.avatar_color} size="sm" />
+                       {(u as any).avatar_url ? (
+                        <img src={(u as any).avatar_url} alt={u.full_name} className="h-8 w-8 rounded-full object-cover" />
+                      ) : (
+                        <Avatar initials={u.initials} color={u.avatar_color} size="sm" />
+                      )}
                       <div>
                         <div className="font-medium text-ink-900">{u.full_name}</div>
                         <div className="text-xs text-ink-400">{u.email}</div>
@@ -107,17 +111,25 @@ export function UsersPage() {
                   <td className="td"><Badge className={roleBadge[u.role]}><ShieldCheck size={11} /> {u.role}</Badge></td>
                   <td className="td text-ink-600">{u.title}</td>
                   <td className="td text-ink-600">{u.region}</td>
-                 {/*} <td className="td text-ink-500">{u.last_login ?? '—'}</td>*/}
                   <td className="td"><Badge className={u.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-ink-100 text-ink-500'}>{u.status}</Badge></td>
+                  <td className="td">
+                    <span className="inline-flex items-center gap-1.5 text-xs">
+                      <span className={cn('h-2 w-2 rounded-full', googleSynced ? 'bg-emerald-500' : 'bg-ink-300')} />
+                      {googleSynced ? 'Conectado' : 'No conectado'}
+                    </span>
+                  </td>
                   <td className="td relative">
                     <button onClick={(e) => { e.stopPropagation(); setMenuId(menuId === u.id ? null : u.id); }} className="h-8 w-8 rounded-md hover:bg-ink-100 flex items-center justify-center text-ink-400">
                       <MoreVertical size={16} />
                     </button>
                     {menuId === u.id && (
-                      <div className="absolute right-4 top-10 z-20 w-36 bg-white rounded-lg shadow-pop border border-ink-200 py-1 animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                      <div className="absolute right-4 top-10 z-20 w-44 bg-white rounded-lg shadow-pop border border-ink-200 py-1 animate-fade-in" onClick={(e) => e.stopPropagation()}>
                         <button onClick={() => openEdit(u)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50"><Pencil size={14} /> Edit</button>
                         <button onClick={() => { setResetPwUser(u); setMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50"><KeyRound size={14} /> Reset password</button>
-                        <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50"><Mail size={14} /> Email</button>
+                        <button onClick={() => { setChangeEmailUser(u); setMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50"><Mail size={14} /> Cambiar correo</button>
+                        {googleSynced && (
+                          <button onClick={() => { setDisconnectUser(u); setMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-ink-700 hover:bg-ink-50"><CalendarX2 size={14} /> Desconectar Google</button>
+                        )}
                         <button onClick={() => toggleSuspend(u)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50">
                           <Trash2 size={14} /> {u.status === 'active' ? 'Suspend' : 'Reactivate'}
                         </button>
@@ -125,7 +137,8 @@ export function UsersPage() {
                     )}
                   </td>
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
         </div>
@@ -140,11 +153,125 @@ export function UsersPage() {
 
       {modalOpen && <UserFormModal user={editUser} onClose={() => setModalOpen(false)} onSaved={handleSaved} />}
       {resetPwUser && <ResetPasswordModal user={resetPwUser} onClose={() => setResetPwUser(null)} />}
+      {changeEmailUser && <ChangeEmailModal user={changeEmailUser} onClose={() => setChangeEmailUser(null)} onSaved={() => { setChangeEmailUser(null); fetchUsers(); }} />}
+      {disconnectUser && <DisconnectGoogleModal user={disconnectUser} onClose={() => setDisconnectUser(null)} onSaved={() => { setDisconnectUser(null); fetchUsers(); }} />}
     </div>
   );
 }
 
-{/*  <th className="th">Last login</th>   la acabezera que se retiro  dentro de usurio- rol -titulo - estado */}
+function DisconnectGoogleModal({ user, onClose, onSaved }: { user: ProfileRow; onClose: () => void; onSaved: () => void }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setError(null);
+    setSaving(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-disconnect`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ user_id: user.id }),
+    });
+    const json = await res.json();
+    setSaving(false);
+    if (!res.ok) { setError(json.error || 'No se pudo desconectar la cuenta.'); return; }
+    onSaved();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-ink-900/50" onClick={onClose} />
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+        <div className="h-12 w-12 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-3">
+          <CalendarCheck2 size={22} className="text-amber-600" />
+        </div>
+        <h3 className="text-lg font-bold text-ink-900 text-center">Desconectar Google Calendar</h3>
+        <p className="text-sm text-ink-500 mt-2 text-center">
+          Esto revoca el permiso de <span className="font-medium text-ink-700">{user.full_name}</span> y deja de crear eventos en su calendario. Puede volver a conectarse cuando quiera desde su perfil.
+        </p>
+        {error && (
+          <div className="mt-4 rounded-lg bg-red-50 border border-red-200 px-3.5 py-3 text-sm text-red-700">{error}</div>
+        )}
+        <div className="flex gap-2 mt-5">
+          <button className="btn-secondary flex-1" onClick={onClose} disabled={saving}>Cancelar</button>
+          <button className="flex-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold py-2.5 disabled:opacity-50" onClick={submit} disabled={saving}>
+            {saving ? 'Desconectando…' : 'Sí, desconectar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChangeEmailModal({ user, onClose, onSaved }: { user: ProfileRow; onClose: () => void; onSaved: () => void }) {
+  const [email, setEmail] = useState(user.email ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const submit = async () => {
+    setError(null);
+    if (!email || !email.includes('@')) { setError('Ingresa un correo válido.'); return; }
+    setSaving(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ user_id: user.id, new_email: email }),
+    });
+    const json = await res.json();
+    setSaving(false);
+    if (!res.ok) { setError(json.error || 'No se pudo actualizar el correo.'); return; }
+    setDone(true);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-ink-900/50" onClick={onClose} />
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+        {done ? (
+          <div className="text-center py-2">
+            <div className="h-12 w-12 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-3">
+              <Mail size={22} className="text-emerald-600" />
+            </div>
+            <h3 className="text-lg font-bold text-ink-900">Correo actualizado</h3>
+            <p className="text-sm text-ink-500 mt-2">{user.full_name} ahora inicia sesión con <span className="font-medium text-ink-700">{email}</span>.</p>
+            <button onClick={onSaved} className="btn-primary w-full py-2.5 text-sm mt-6">Listo</button>
+          </div>
+        ) : (
+          <>
+            <h3 className="text-lg font-bold text-ink-900">Cambiar correo</h3>
+            <p className="text-sm text-ink-500 mt-1.5 mb-5">Actualiza el correo de inicio de sesión de <span className="font-medium text-ink-700">{user.full_name}</span> (actual: {user.email}).</p>
+            {error && (
+              <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3.5 py-3 text-sm text-red-700">{error}</div>
+            )}
+            <label className="label">Nuevo correo</label>
+            <input
+              type="email"
+              className="input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="nombre@selecom.com"
+              autoFocus
+            />
+            <div className="flex gap-2 mt-5">
+              <button className="btn-secondary flex-1" onClick={onClose} disabled={saving}>Cancelar</button>
+              <button className="btn-primary flex-1" onClick={submit} disabled={saving}>{saving ? 'Guardando…' : 'Guardar correo'}</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function ResetPasswordModal({ user, onClose }: { user: ProfileRow; onClose: () => void }) {
   const [password, setPassword] = useState('');

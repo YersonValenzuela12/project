@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Shield, User, FileText, Settings, Database, Lock, Globe, ChevronDown, Check } from 'lucide-react';
+import { Shield, User, FileText, Settings, Database, Lock, Globe, ChevronDown, Check, Users as UsersIcon, FolderOpen, Image as ImageIcon } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, SectionHeader, Avatar, Badge, Tabs } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -140,6 +140,10 @@ export function AuditPage() {
   );
 }
 
+const ROLE_LABELS_ES: Record<string, string> = {
+  admin: 'Administrador', supervisor: 'Supervisor', coordinador: 'Coordinador', technician: 'Técnico',
+};
+
 export function SettingsPage() {
   const [tab, setTab] = useState('General');
   const [loading, setLoading] = useState(true);
@@ -154,6 +158,9 @@ export function SettingsPage() {
   const [currency, setCurrency] = useState('Soles (S/.)');
   const [workingHours, setWorkingHours] = useState('');
 
+  const [userStats, setUserStats] = useState<{ total: number; active: number; suspended: number; byRole: Record<string, number> } | null>(null);
+  const [docStats, setDocStats] = useState<{ total: number; sitesWithPhoto: number; totalSites: number } | null>(null);
+
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from('system_settings').select('*').eq('id', 'global').single();
@@ -166,6 +173,29 @@ export function SettingsPage() {
         setWorkingHours(data.working_hours ?? '');
       }
       setLoading(false);
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const { data: profiles } = await supabase.from('profiles').select('role, status');
+      if (profiles) {
+        const byRole: Record<string, number> = {};
+        let active = 0;
+        let suspended = 0;
+        profiles.forEach((p: any) => {
+          byRole[p.role] = (byRole[p.role] ?? 0) + 1;
+          if (p.status === 'active') active++; else suspended++;
+        });
+        setUserStats({ total: profiles.length, active, suspended, byRole });
+      }
+
+      const [{ count: totalDocs }, { count: sitesWithPhoto }, { count: totalSites }] = await Promise.all([
+        supabase.from('documents').select('*', { count: 'exact', head: true }),
+        supabase.from('sites').select('*', { count: 'exact', head: true }).not('image_url', 'is', null),
+        supabase.from('sites').select('*', { count: 'exact', head: true }),
+      ]);
+      setDocStats({ total: totalDocs ?? 0, sitesWithPhoto: sitesWithPhoto ?? 0, totalSites: totalSites ?? 0 });
     })();
   }, []);
 
@@ -210,71 +240,148 @@ export function SettingsPage() {
           ))}
         </div>
         <div className="space-y-4">
-          <Card>
-            <SectionHeader
-              title="Configuración General"
-              subtitle="Preferencias generales de la organización"
-              action={
-                <div className="flex items-center gap-2">
-                  {saved && <span className="text-xs font-medium text-emerald-600 flex items-center gap-1"><Check size={13} /> Guardado</span>}
-                  <button className="btn-primary h-8 text-xs" onClick={handleSave} disabled={saving || loading}>
-                    {saving ? 'Guardando…' : 'Guardar'}
-                  </button>
+
+          {tab === 'General' && (
+            <Card>
+              <SectionHeader
+                title="Configuración General"
+                subtitle="Preferencias generales de la organización"
+                action={
+                  <div className="flex items-center gap-2">
+                    {saved && <span className="text-xs font-medium text-emerald-600 flex items-center gap-1"><Check size={13} /> Guardado</span>}
+                    <button className="btn-primary h-8 text-xs" onClick={handleSave} disabled={saving || loading}>
+                      {saving ? 'Guardando…' : 'Guardar'}
+                    </button>
+                  </div>
+                }
+              />
+              {saveError && <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">{saveError}</div>}
+              {loading ? (
+                <div className="py-6 text-center text-sm text-ink-500">Cargando…</div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="label">Nombre de la organización</label><input className="input" value={orgName} onChange={(e) => setOrgName(e.target.value)} /></div>
+                  <div><label className="label">URL de la plataforma</label><input className="input" value={platformUrl} onChange={(e) => setPlatformUrl(e.target.value)} /></div>
+                  <div>
+                    <label className="label">Zona horaria</label>
+                    <select className="input" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+                      <option>Lima - Perú</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Formato de fecha</label>
+                    <select className="input" value={dateFormat} onChange={(e) => setDateFormat(e.target.value)}>
+                      <option>DD/MM/AAAA</option>
+                      <option>MMM D, AAAA</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Moneda</label>
+                    <select className="input" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                      <option>Soles (S/.)</option>
+                      <option>Dólares ($)</option>
+                    </select>
+                  </div>
+                  <div><label className="label">Horario laboral</label><input className="input" value={workingHours} onChange={(e) => setWorkingHours(e.target.value)} placeholder="08:00 – 18:00" /></div>
                 </div>
-              }
-            />
-            {saveError && <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">{saveError}</div>}
-            {loading ? (
-              <div className="py-6 text-center text-sm text-ink-500">Cargando…</div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="label">Nombre de la organización</label><input className="input" value={orgName} onChange={(e) => setOrgName(e.target.value)} /></div>
-                <div><label className="label">URL de la plataforma</label><input className="input" value={platformUrl} onChange={(e) => setPlatformUrl(e.target.value)} /></div>
-                <div>
-                  <label className="label">Zona horaria</label>
-                  <select className="input" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
-                    <option>Lima - Perú</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Formato de fecha</label>
-                  <select className="input" value={dateFormat} onChange={(e) => setDateFormat(e.target.value)}>
-                    <option>DD/MM/AAAA</option>
-                    <option>MMM D, AAAA</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Moneda</label>
-                  <select className="input" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                    <option>Soles (S/.)</option>
-                    <option>Dólares ($)</option>
-                  </select>
-                </div>
-                <div><label className="label">Horario laboral</label><input className="input" value={workingHours} onChange={(e) => setWorkingHours(e.target.value)} placeholder="08:00 – 18:00" /></div>
+              )}
+            </Card>
+          )}
+
+          {tab === 'Security' && (
+            <Card className="relative overflow-hidden">
+              <div className="absolute top-4 right-4"><Badge className="bg-amber-50 text-amber-700">Próximamente</Badge></div>
+              <SectionHeader title="Políticas de Seguridad" subtitle="Autenticación y controles de acceso" />
+              <div className="opacity-50 pointer-events-none">
+                <Toggle label="Exigir autenticación multifactor" desc="Requerir MFA para todos los usuarios" on />
+                <Toggle label="Cierre de sesión tras 30 minutos" desc="Cierre automático por inactividad" on />
+                <Toggle label="Lista blanca de IPs" desc="Restringir acceso a redes conocidas" />
+                <Toggle label="Renovación de contraseña cada 90 días" desc="Forzar cambios periódicos de contraseña" on />
               </div>
-            )}
-          </Card>
+            </Card>
+          )}
 
-          <Card className="relative overflow-hidden">
-            <div className="absolute top-4 right-4"><Badge className="bg-amber-50 text-amber-700">Próximamente</Badge></div>
-            <SectionHeader title="Políticas de Seguridad" subtitle="Autenticación y controles de acceso" />
-            <div className="opacity-50 pointer-events-none">
-              <Toggle label="Exigir autenticación multifactor" desc="Requerir MFA para todos los usuarios" on />
-              <Toggle label="Cierre de sesión tras 30 minutos" desc="Cierre automático por inactividad" on />
-              <Toggle label="Lista blanca de IPs" desc="Restringir acceso a redes conocidas" />
-              <Toggle label="Renovación de contraseña cada 90 días" desc="Forzar cambios periódicos de contraseña" on />
-            </div>
-          </Card>
+          {tab === 'Users' && (
+            <Card>
+              <SectionHeader title="Usuarios del Sistema" subtitle="Resumen de solo lectura — la edición se hace en Administración → Usuarios" />
+              {!userStats ? (
+                <div className="py-6 text-center text-sm text-ink-500">Cargando…</div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-4 mb-5">
+                    <div className="rounded-lg bg-ink-50 border border-ink-200 px-4 py-3 text-center">
+                      <div className="text-2xl font-bold text-ink-900">{userStats.total}</div>
+                      <div className="text-xs text-ink-500 mt-0.5">Total</div>
+                    </div>
+                    <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-center">
+                      <div className="text-2xl font-bold text-emerald-700">{userStats.active}</div>
+                      <div className="text-xs text-emerald-600 mt-0.5">Activos</div>
+                    </div>
+                    <div className="rounded-lg bg-ink-100 border border-ink-200 px-4 py-3 text-center">
+                      <div className="text-2xl font-bold text-ink-600">{userStats.suspended}</div>
+                      <div className="text-xs text-ink-500 mt-0.5">Suspendidos</div>
+                    </div>
+                  </div>
+                  <div className="border-t border-ink-100 pt-4 space-y-2.5">
+                    {Object.entries(userStats.byRole).map(([role, count]) => (
+                      <div key={role} className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-ink-700"><UsersIcon size={14} className="text-ink-400" /> {ROLE_LABELS_ES[role] ?? role}</span>
+                        <span className="font-semibold text-ink-900">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </Card>
+          )}
 
-          <Card className="relative overflow-hidden">
-            <div className="absolute top-4 right-4"><Badge className="bg-amber-50 text-amber-700">Próximamente</Badge></div>
-            <SectionHeader title="Respaldos Automáticos" subtitle="Gestionados directamente por Supabase" action={<button className="btn-secondary" disabled>Ejecutar ahora</button>} />
-            <div className="opacity-50 pointer-events-none">
-              <Toggle label="Respaldo completo diario de la base de datos" desc="02:00, retenido 30 días" on />
-              <Toggle label="Archivo semanal de documentos" desc="Domingos 03:00, retenido 90 días" on />
-              <Toggle label="Replicación en tiempo real" desc="Transmisión continua a servidor de respaldo" on />
-            </div>
-          </Card>
+          {tab === 'Integrations' && (
+            <Card className="relative overflow-hidden">
+              <div className="absolute top-4 right-4"><Badge className="bg-amber-50 text-amber-700">Próximamente</Badge></div>
+              <SectionHeader title="Integraciones" subtitle="Conexiones con servicios externos (Google Calendar, WhatsApp, etc.)" />
+              <div className="py-8 text-center text-sm text-ink-400">Aún no hay integraciones configuradas.</div>
+            </Card>
+          )}
+
+          {tab === 'Backups' && (
+            <Card className="relative overflow-hidden">
+              <div className="absolute top-4 right-4"><Badge className="bg-amber-50 text-amber-700">Próximamente</Badge></div>
+              <SectionHeader title="Respaldos Automáticos" subtitle="Gestionados directamente por Supabase" action={<button className="btn-secondary" disabled>Ejecutar ahora</button>} />
+              <div className="opacity-50 pointer-events-none">
+                <Toggle label="Respaldo completo diario de la base de datos" desc="02:00, retenido 30 días" on />
+                <Toggle label="Archivo semanal de documentos" desc="Domingos 03:00, retenido 90 días" on />
+                <Toggle label="Replicación en tiempo real" desc="Transmisión continua a servidor de respaldo" on />
+              </div>
+            </Card>
+          )}
+
+          {tab === 'Documents' && (
+            <Card>
+              <SectionHeader title="Documentos y Sitios" subtitle="Resumen de solo lectura del almacenamiento" />
+              {!docStats ? (
+                <div className="py-6 text-center text-sm text-ink-500">Cargando…</div>
+              ) : (
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="rounded-lg bg-ink-50 border border-ink-200 px-4 py-3 text-center">
+                    <FolderOpen size={18} className="mx-auto text-ink-400 mb-1.5" />
+                    <div className="text-2xl font-bold text-ink-900">{docStats.total}</div>
+                    <div className="text-xs text-ink-500 mt-0.5">Documentos subidos</div>
+                  </div>
+                  <div className="rounded-lg bg-ink-50 border border-ink-200 px-4 py-3 text-center">
+                    <ImageIcon size={18} className="mx-auto text-ink-400 mb-1.5" />
+                    <div className="text-2xl font-bold text-ink-900">{docStats.sitesWithPhoto}</div>
+                    <div className="text-xs text-ink-500 mt-0.5">Sitios con foto</div>
+                  </div>
+                  <div className="rounded-lg bg-ink-50 border border-ink-200 px-4 py-3 text-center">
+                    <FileText size={18} className="mx-auto text-ink-400 mb-1.5" />
+                    <div className="text-2xl font-bold text-ink-900">{docStats.totalSites}</div>
+                    <div className="text-xs text-ink-500 mt-0.5">Sitios registrados</div>
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
+
         </div>
       </div>
     </div>

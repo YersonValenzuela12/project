@@ -66,7 +66,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
       {/* Left brand panel */}
       <div className="hidden lg:flex lg:w-[46%] xl:w-[42%] relative bg-ink-900 overflow-hidden">
         <img
-          src="https://images.pexels.com/photos/264819/pexels-photo-264819.jpeg?auto=compress&cs=tinysrgb&w=1400"
+         // src="https://images.pexels.com/photos/264819/pexels-photo-264819.jpeg?auto=compress&cs=tinysrgb&w=1400"
           alt="Security operations center"
           className="absolute inset-0 h-full w-full object-cover opacity-35"
         />
@@ -96,10 +96,10 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
           <div className="max-w-md">
             <h1 className="text-4xl font-bold leading-tight tracking-tight">
-              Command every field<br />operation from one console.
+             ¡Te damos la bienvenida!<br />
             </h1>
             <p className="mt-4 text-white/70 text-lg leading-relaxed">
-              Scheduling, dispatch, and compliance for CCTV, access control, fire alarm, fire water, and building Automatitation systems.
+              Gestion de tramites, Asistencia, Ordenes de trabajo, Calendario.
             </p>
             <div className="mt-8 grid grid-cols-2 gap-3">
               {[
@@ -191,9 +191,9 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
           <div className="grid grid-cols-3 gap-2">
             {([                                              //NOMBRE DE USUSRAIOS DE PRUEBA
-              { label: 'Admin', email: 'admin@selecom.com', color: 'border-primary-200 hover:border-primary-400 hover:bg-primary-50' },
-              { label: 'Supervisor', email: 'jose.rodriguez@selecom.com', color: 'border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50' },
-              { label: 'Technician', email: 'yerson.valenzuela@selecom.com', color: 'border-amber-200 hover:border-amber-400 hover:bg-amber-50' },
+              { label: 'Admin', email: 'a@selecom.com', color: 'border-primary-200 hover:border-primary-400 hover:bg-primary-50' },
+              { label: 'Supervisor', email: 'j@selecom.com', color: 'border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50' },
+              { label: 'Technician', email: 'y@selecom.com', color: 'border-amber-200 hover:border-amber-400 hover:bg-amber-50' },
             ] as const).map((d) => (
               <button
                 key={d.label}
