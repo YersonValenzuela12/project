@@ -110,7 +110,7 @@ export function FormsPage() {
 
   return (
     <div>
-      <PageHeader title="Forms" subtitle="Submit and track your field and HR forms" breadcrumbs={['Home', 'Technician', 'Forms']} />
+      <PageHeader title="Forms" subtitle="Submit and track your field and HR forms" breadcrumbs={['inicio', 'Tecnico', 'Formulario']} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {forms.map((f) => {
@@ -157,10 +157,10 @@ export function FormsPage() {
         title={form?.name ?? ''}
         size="lg"
         footer={submitted ? (
-          <button className="btn-primary" onClick={() => setActive(null)}>Done</button>
+          <button className="btn-primary" onClick={() => setActive(null)}>hacer</button>
         ) : (
           <>
-            <button className="btn-secondary" onClick={() => setActive(null)} disabled={saving}>Cancel</button>
+            <button className="btn-secondary" onClick={() => setActive(null)} disabled={saving}>Cancelar</button>
             <button className="btn-primary" onClick={submit} disabled={saving}><PenLine size={15} /> {saving ? 'Submitting…' : 'Sign & Submit'}</button>
           </>
         )}

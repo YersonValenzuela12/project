@@ -59,7 +59,7 @@ async function compressImage(file: File, maxWidth = 400, quality = 0.85): Promis
   }
 }
 
-export function DocumentsPage() {
+export function DocumentsPage({ externalQuery = '' }: { externalQuery?: string }) {
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
   const [workOrders, setWorkOrders] = useState<any[]>([]);
@@ -176,7 +176,12 @@ export function DocumentsPage() {
     return FileCheck;
   };
 
-  const groupedByUploader = docs.reduce((acc: Record<string, any[]>, d) => {
+  const q = externalQuery.toLowerCase();
+  const filteredDocs = docs.filter((d) =>
+    !q || d.name.toLowerCase().includes(q) || (d.uploader?.full_name ?? '').toLowerCase().includes(q),
+  );
+
+  const groupedByUploader = filteredDocs.reduce((acc: Record<string, any[]>, d) => {
     const key = d.uploaded_by ?? 'unknown';
     if (!acc[key]) acc[key] = [];
     acc[key].push(d);
@@ -242,12 +247,12 @@ export function DocumentsPage() {
 
       {loading ? (
         <Card><div className="p-8 text-center text-sm text-ink-500">Cargando documentos…</div></Card>
-      ) : docs.length === 0 ? (
-        <Card><div className="p-8 text-center text-sm text-ink-500">Aún no hay documentos aquí.</div></Card>
+      ) : filteredDocs.length === 0 ? (
+        <Card><div className="p-8 text-center text-sm text-ink-500">{q ? 'Ningún documento coincide con tu búsqueda.' : 'Aún no hay documentos aquí.'}</div></Card>
       ) : isAdmin ? (
         <>
           <div className="grid grid-cols-2 gap-4 mb-5">
-            <Card><div className="text-xs text-ink-500 mb-1">Archivos totales</div><div className="text-2xl font-bold text-ink-900">{docs.length}</div></Card>
+            <Card><div className="text-xs text-ink-500 mb-1">Archivos totales</div><div className="text-2xl font-bold text-ink-900">{filteredDocs.length}</div></Card>
             <Card><div className="text-xs text-ink-500 mb-1">Personas</div><div className="text-2xl font-bold text-ink-900">{uploaderGroups.length}</div></Card>
           </div>
            <Card pad={false} className="overflow-hidden mb-4">
@@ -311,14 +316,14 @@ export function DocumentsPage() {
               })}
             </div>
           </Card>
-          <button className="btn-primary w-full" onClick={() => handleDownloadGroup(docs)}>
+          <button className="btn-primary w-full" onClick={() => handleDownloadGroup(filteredDocs)}>
             <FileDown size={15} /> Descargar todo para el informe
           </button>
         </>
       ) : (
         <>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2">
-            {docs.map((d) => (
+            {filteredDocs.map((d) => (
               <button
                 key={d.id}
                 onClick={() => setPreviewDoc(d)}

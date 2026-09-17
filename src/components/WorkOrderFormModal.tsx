@@ -83,6 +83,9 @@ export function WorkOrderFormModal({
   const [status, setStatus] = useState(order?.status ?? 'open');
   const [progress, setProgress] = useState(order?.progress ?? 0);
   const [scheduledDate, setScheduledDate] = useState(order?.scheduled_date ?? '');
+  const [rescheduleNote, setRescheduleNote] = useState(order?.reschedule_note ?? '');
+  const originalDate = order?.scheduled_date ?? null;
+  const dateChanged = isEdit && originalDate && scheduledDate && scheduledDate !== originalDate;
   const [scheduledTime, setScheduledTime] = useState(order?.scheduled_time ?? '09:00');
   const [durationHrs, setDurationHrs] = useState(order?.duration_hrs ?? 2);
   const [description, setDescription] = useState(order?.description ?? '');
@@ -226,7 +229,7 @@ export function WorkOrderFormModal({
 
     const primaryTechnician = people.find((p) => selectedIds.includes(p.id) && p.role === 'technician');
 
-    const payload = {
+    const payload: any = {
       client,
       site,
       address,
@@ -242,7 +245,14 @@ export function WorkOrderFormModal({
       description,
       equipment,
     };
-
+    // If the scheduled date changed on an existing order, flag it as rescheduled
+    if (dateChanged) {
+      payload.rescheduled_from = originalDate;
+      payload.rescheduled_at = new Date().toISOString();
+      payload.reschedule_note = rescheduleNote || null;
+    } else if (isEdit) {
+      payload.reschedule_note = rescheduleNote || null;
+    }
     let orderId = order?.id;
 
     if (isEdit) {
@@ -431,11 +441,30 @@ export function WorkOrderFormModal({
           </>
         )}
 
-        <div><label className="label">Fecha programada</label><input type="date" className="input" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} /></div>
+               <div>
+          <label className="label">Fecha Reprogramada</label>
+          <input type="date" className="input" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
+          {dateChanged && (
+            <p className="text-xs text-amber-600 mt-1">
+              Reprogramada · antes: {new Date(`${originalDate}T00:00:00`).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })}
+            </p>
+          )}
+        </div>
         <div><label className="label">Hora programada</label><input type="time" className="input" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} /></div>
         <div><label className="label">Duracion (hrs)</label><input type="number" min={0.5} step={0.5} className="input" value={durationHrs} onChange={(e) => setDurationHrs(Number(e.target.value))} /></div>
         <div><label className="label">Equipos</label><input className="input" value={equipment} onChange={(e) => setEquipment(e.target.value)} placeholder="Optional" /></div>
-        <div className="col-span-2"><label className="label">Descripción</label><textarea className="input" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="¿Qué necesitas hacer…" /></div>
+        <div className="col-span-2"><label className="label">Description</label><textarea className="input" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Que vaz hacer?…" /></div>
+        {isEdit && (
+          <div className="col-span-2">
+            <label className="label">Nota de reprogramación {dateChanged && <span className="text-amber-600">(recomendado)</span>}</label>
+            <input
+              className="input"
+              value={rescheduleNote}
+              onChange={(e) => setRescheduleNote(e.target.value)}
+              placeholder="Ej. El cliente pidió posponer por obra en el edificio"
+            />
+          </div>
+        )}
       </div>
 
       <div className="mt-5">

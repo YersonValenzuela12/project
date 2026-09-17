@@ -21,9 +21,9 @@ export function Avatar({
 }
 
 export function Badge({
-  children, className,
-}: { children: ReactNode; className?: string }) {
-  return <span className={cn('chip', className)}>{children}</span>;
+  children, className, title,
+}: { children: ReactNode; className?: string; title?: string }) {
+  return <span className={cn('chip', className)} title={title}>{children}</span>;
 }
 
 export function StatusDot({ className }: { className?: string }) {

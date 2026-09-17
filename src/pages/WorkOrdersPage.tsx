@@ -190,6 +190,14 @@ export function WorkOrdersPage({
                     <div className="text-sm text-ink-600 flex items-center gap-1.5 mt-2">
                       <Clock size={13} className="text-ink-400" />{w.scheduled_time} · {w.service_type}
                     </div>
+                    {w.rescheduled_from && (
+                      <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-1.5">
+                        <div className="text-[11px] font-semibold text-amber-700">
+                          Reprogramada · antes {new Date(`${w.rescheduled_from}T00:00:00`).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })}
+                        </div>
+                        {w.reschedule_note && <div className="text-[11px] text-amber-600 mt-0.5">{w.reschedule_note}</div>}
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 mt-3">
                       {isDone ? (
                         <Badge className="bg-ink-100 text-ink-500"><Check size={11} className="inline mr-1" />Completado</Badge>
@@ -275,7 +283,11 @@ export function WorkOrdersPage({
                             )}
                           </td>
                         )}
-                        <td className="td text-ink-600"><div className="flex items-center gap-1.5 text-sm"><Clock size={12} className="text-ink-400" />{w.scheduled_time}</div><div className="text-xs text-ink-400">{w.scheduled_date}</div></td>
+                        <td className="td text-ink-600">
+                          <div className="flex items-center gap-1.5 text-sm"><Clock size={12} className="text-ink-400" />{w.scheduled_time}</div>
+                          <div className="text-xs text-ink-400">{w.scheduled_date}</div>
+                          {w.rescheduled_from && (<Badge className="bg-amber-50 text-amber-700 text-[10px] mt-1" title={w.reschedule_note || 'Sin nota'}>Reprogramada</Badge> )}
+                        </td>
                         <td className="td w-32"><ProgressBar value={w.progress} barClass={w.progress === 100 ? 'bg-emerald-500' : 'bg-primary-600'} /><span className="text-xs text-ink-500 mt-1 block">{w.progress}%</span></td>
                         <td className="td"><ChevronRight size={16} className="text-ink-300" /></td>
                       </tr>

@@ -203,9 +203,9 @@ export function AdminDashboard({ setPage, onAction }: { setPage: (p: string) => 
   return (
     <div>
       <PageHeader
-        title="Administrator Dashboard"
-        subtitle="System-wide overview of users, operations, and compliance"
-        breadcrumbs={['Home', 'Administrator', 'Dashboard']}
+        title="Panel de control"
+        subtitle="Vista de usuarios,operaciones y cumplimiento"
+        breadcrumbs={['Inicio', 'Administrator', 'Dashboard']}
         actions={
           <>
            {/*} <button className="btn-secondary"><Download size={15} /> Export</button>*/}

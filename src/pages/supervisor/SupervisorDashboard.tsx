@@ -67,7 +67,7 @@ export function SupervisorDashboard({ onSelect, setPage }: { onSelect: (w: any) 
       <PageHeader
         title="Panel de Supervisor"
         subtitle={`${profile.region ?? 'Selecom'} · ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`}
-        breadcrumbs={['Home', 'Supervisor', 'Dashboard']}
+        breadcrumbs={['Inicio', 'Supervisor', 'Panel de control']}
         actions={
           <>
             <button className="btn-secondary" onClick={() => setPage('calendar')}><CalendarClock size={15} /> Calendario</button>

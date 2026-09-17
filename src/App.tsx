@@ -26,7 +26,7 @@ const BREADCRUMB_ROLE_LABEL: Record<Role, string> = {
   admin: 'Administrator',
   supervisor: 'Supervisor',
   coordinador: 'Coordinador',
-  technician: 'Technician',
+  technician: 'Tecnico',
 };
 
 function App() {
@@ -71,7 +71,7 @@ function App() {
         if (role === 'coordinador') return <CoordinadorDashboard setPage={goPage} onAction={() => goPage('workorders')} />;
         return <TechnicianDashboard onSelect={() => setPage('workorders')} setPage={goPage} />;
       case 'today':
-        return <WorkOrdersPage title="Today's Jobs" breadcrumbs={['Home', 'Technician', "Today's Jobs"]} onSelect={() => setPage('workorders')} showAssign={false} externalQuery={globalQuery} />;
+        return <WorkOrdersPage title="Ordenes de Trabajo" breadcrumbs={['Home', 'Tecnico', "Ordenes de trabajo"]} onSelect={() => setPage('workorders')} showAssign={false} externalQuery={globalQuery} />;
       case 'users':
         return <UsersPage externalQuery={globalQuery} />;
       case 'permissions':
@@ -85,7 +85,7 @@ function App() {
       case 'calendar':
         return <CalendarPage onSelect={() => setPage('workorders')} role={role} />;
       case 'documents':
-        return <DocumentsPage />;
+        return <DocumentsPage externalQuery={globalQuery} />;
       case 'reports':
         return <ReportsPage />;
       case 'audit':
@@ -97,7 +97,7 @@ function App() {
       case 'form_requests':
         return <AdminFormsPage readOnly={role !== 'admin'} />;
       case 'history':
-        return <HistoryPage />;
+        return <HistoryPage/>;
       case 'profile':
         return <ProfilePage />;
       case 'notifications':

@@ -76,7 +76,7 @@ export function CoordinadorDashboard({ setPage, onAction }: { setPage: (p: strin
   }, []);
 
   if (!data) {
-    return <div className="p-8 text-center text-ink-400 text-sm">Cargando panel…</div>;
+    return <div className="p-8 text-center text-ink-400 text-sm">Cargando panel de control…</div>;
   }
 
   const { stats, techsAvailable, techsBusy, alerts } = data;
@@ -84,9 +84,9 @@ export function CoordinadorDashboard({ setPage, onAction }: { setPage: (p: strin
   return (
     <div>
       <PageHeader
-        title="Panel de Operaciones"
+        title="Panel de control"
         subtitle="Vista general de la planificación y ejecución de trabajos"
-        breadcrumbs={['Inicio', 'Coordinador', 'Panel']}
+        breadcrumbs={['Inicio', 'Coordinador', 'Panel de control']}
         actions={
           <button className="btn-primary" onClick={onAction}><FilePlus2 size={15} /> Crear Orden de Trabajo</button>
         }

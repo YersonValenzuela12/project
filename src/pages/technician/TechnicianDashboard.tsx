@@ -10,7 +10,7 @@ import { statusColor, statusLabel, priorityColor, serviceColor } from '@/data/mo
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+const WEEKDAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes','Sábado', 'Domingo'];
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -89,20 +89,20 @@ export function TechnicianDashboard({ onSelect, setPage }: { onSelect: (w: any) 
   return (
     <div>
       <PageHeader
-        title="My Dashboard"
-        subtitle={`Good morning, ${firstName} — you have ${today.length} job${today.length === 1 ? '' : 's'} scheduled today`}
-        breadcrumbs={['Home', 'Technician', 'My Dashboard']}
+        title="Panel de control"
+        subtitle={`Hola, ${firstName} .Tienes ${today.length} trabajo${today.length === 1 ? '' : 's'} programados para hoy`}
+        breadcrumbs={['Inicio', 'Tecnico', 'Panel de control']}
       />
 
       {loading ? (
-        <Card><div className="p-8 text-center text-sm text-ink-500">Loading your jobs…</div></Card>
+        <Card><div className="p-8 text-center text-sm text-ink-500">Cargando tus trabajos…</div></Card>
       ) : (
       <>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Today's Jobs" value={today.length} icon={ClipboardList} iconColor="bg-primary-50 text-primary-600" />
-        <StatCard label="Pending Jobs" value={pending} icon={Clock} iconColor="bg-amber-50 text-amber-600" />
-        <StatCard label="Completed Jobs" value={completed} icon={CheckCircle2} iconColor="bg-emerald-50 text-emerald-600" />
-        <StatCard label="Documents" value={docCount} icon={FolderOpen} iconColor="bg-violet-50 text-violet-600" />
+        <StatCard label="Trabajos de Hoy" value={today.length} icon={ClipboardList} iconColor="bg-primary-50 text-primary-600" />
+        <StatCard label="Trabajos Pendientes" value={pending} icon={Clock} iconColor="bg-amber-50 text-amber-600" />
+        <StatCard label="Trabajos Completados" value={completed} icon={CheckCircle2} iconColor="bg-emerald-50 text-emerald-600" />
+        <StatCard label="Documentos" value={docCount} icon={FolderOpen} iconColor="bg-violet-50 text-violet-600" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
@@ -132,14 +132,14 @@ export function TechnicianDashboard({ onSelect, setPage }: { onSelect: (w: any) 
 
               <div className="flex items-center gap-2 mt-5">
                 <button onClick={() => onSelect(next)} className="btn-primary"><Play size={15} /> {next.status === 'in_progress' ? 'Continue Job' : 'Start Job'}</button>
-                <button onClick={() => onSelect(next)} className="btn-secondary"><Navigation size={15} /> Navigate</button>
+                <button onClick={() => onSelect(next)} className="btn-secondary"><Navigation size={15} /> Navegar</button>
                 <button onClick={() => onSelect(next)} className="btn-ghost ml-auto">View details <ChevronRight size={15} /></button>
               </div>
             </div>
           </Card>
         ) : (
           <Card className="lg:col-span-2 flex items-center justify-center text-sm text-ink-500 py-12">
-            No upcoming work orders scheduled for today.
+            No Hay Trabajos Programados para hoy.
           </Card>
         )}
 
@@ -149,19 +149,19 @@ export function TechnicianDashboard({ onSelect, setPage }: { onSelect: (w: any) 
             <Card className="bg-gradient-to-br from-red-50 to-orange-50 border-red-100">
               <div className="flex items-center gap-3 mb-3">
                 <div className="h-11 w-11 rounded-xl bg-red-500 text-white flex items-center justify-center"><AlertTriangle size={22} /></div>
-                <div><div className="text-sm font-semibold text-red-900">Urgent attention</div><div className="text-xs text-red-700/70">1 job needs action</div></div>
+                <div><div className="text-sm font-semibold text-red-900">Atención Urgente</div><div className="text-xs text-red-700/70">1 job needs action</div></div>
               </div>
               <p className="text-sm text-red-800">{urgentOpen.code} {urgentOpen.description ? `— ${urgentOpen.description}` : ''} · {urgentOpen.progress}% done.</p>
               <button onClick={() => onSelect(urgentOpen)} className="mt-3 text-sm font-semibold text-red-700 hover:text-red-900 flex items-center gap-1">Open now <ChevronRight size={14} /></button>
             </Card>
           ) : (
             <Card className="bg-emerald-50 border-emerald-100">
-              <div className="text-sm font-semibold text-emerald-800">No urgent jobs right now 🎉</div>
+              <div className="text-sm font-semibold text-emerald-800">Momento de Relax 🎉</div>
             </Card>
           )}
 
           <Card>
-            <SectionHeader title="This Week" subtitle="Your workload" />
+            <SectionHeader title="Esta Semana" subtitle="Tu carga de trabajo" />
             <div className="space-y-2.5">
               {WEEKDAYS.map((d, i) => (
                 <div key={d} className="flex items-center gap-3">
@@ -177,9 +177,9 @@ export function TechnicianDashboard({ onSelect, setPage }: { onSelect: (w: any) 
 
       {/* Today's schedule */}
       <Card pad={false}>
-        <div className="p-5 pb-3"><SectionHeader title="Today's Schedule" subtitle={`${today.length} job${today.length === 1 ? '' : 's'} today`} action={<button className="text-sm font-medium text-primary-600" onClick={() => setPage('today')}>View all</button>} /></div>
+        <div className="p-5 pb-3"><SectionHeader title="Programación de Hoy" subtitle={`${today.length} trabajo${today.length === 1 ? '' : 's'} programado${today.length === 1 ? '' : 's'} para hoy`} action={<button className="text-sm font-medium text-primary-600" onClick={() => setPage('today')}>Ver todos</button>} /></div>
         <div className="divide-y divide-ink-50">
-          {today.length === 0 && <div className="px-5 py-8 text-center text-sm text-ink-400">Nothing scheduled for today.</div>}
+          {today.length === 0 && <div className="px-5 py-8 text-center text-sm text-ink-400">No hay programación para hoy.</div>}
           {today.map((w) => {
             const sup = w.supervisor_id ? supervisors.get(w.supervisor_id) : null;
             return (

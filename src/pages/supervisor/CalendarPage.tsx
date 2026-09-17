@@ -168,20 +168,20 @@ function MyCalendar({ onSelect }: { onSelect: (w: any) => void }) {
   return (
     <div>
       <PageHeader
-        title="My Calendar"
-        subtitle={`${weekRangeLabel(days)} · view only`}
-        breadcrumbs={['Home', 'Technician', 'Calendar']}
+        title=" Calendario Semanal de Trabajo"
+        subtitle={`${weekRangeLabel(days)} · solo lectura`}
+        breadcrumbs={['Inicio', 'Tecnico', 'Calendario']}
         actions={
           <div className="flex items-center bg-white border border-ink-200 rounded-lg">
             <button onClick={() => setWeekOffset((w) => w - 1)} className="h-9 w-9 flex items-center justify-center text-ink-500 hover:bg-ink-50 rounded-l-lg"><ChevronLeft size={16} /></button>
-            <button onClick={() => setWeekOffset(0)} className="px-3 text-sm font-semibold text-ink-800 hover:bg-ink-50">{weekOffset === 0 ? 'This week' : 'Back to today'}</button>
+            <button onClick={() => setWeekOffset(0)} className="px-3 text-sm font-semibold text-ink-800 hover:bg-ink-50">{weekOffset === 0 ? 'Hoy' : 'Volver a hoy'}</button>
             <button onClick={() => setWeekOffset((w) => w + 1)} className="h-9 w-9 flex items-center justify-center text-ink-500 hover:bg-ink-50 rounded-r-lg"><ChevronRight size={16} /></button>
           </div>
         }
       />
 
       <div className="mb-4 flex items-center gap-2 text-xs text-ink-500 bg-ink-50 border border-ink-200 rounded-lg px-3 py-2">
-        <Lock size={13} /> You're viewing your calendar in read-only mode. Only admins, coordinators, and supervisors can reassign or reschedule jobs.
+        <Lock size={13} /> Vista lectura
       </div>
 
       {loading ? (

@@ -51,14 +51,14 @@ export function TechniciansPage({
 
   const label = roleFilter === 'supervisor' ? 'Supervisors' : roleFilter === 'coordinador' ? 'Coordinadores' : 'Technicians';
   const noun = roleFilter === 'supervisor' ? 'supervisors' : roleFilter === 'coordinador' ? 'coordinadores' : ' technicians';
-  const addLabel = roleFilter === 'supervisor' ? 'Add Supervisor' : roleFilter === 'coordinador' ? 'Add Coordinador' : 'Add Technician';
+  const addLabel = roleFilter === 'supervisor' ? 'Agregar Supervisor' : roleFilter === 'coordinador' ? 'Agregar Coordinador' : 'Agregar Tecnico';
 
   return (
     <div>
       <PageHeader
         title={adminView ? label : `My ${label}`}
         subtitle={`${list.length} ${noun} se encontro`}
-        breadcrumbs={['Home', ROLE_BREADCRUMB[role] ?? 'Administrator', label]}
+        breadcrumbs={['Inicio', ROLE_BREADCRUMB[role] ?? 'Administrador', label]}
         actions={adminView ? <button className="btn-primary" onClick={() => setModalOpen(true)}><Wrench size={15} /> {addLabel}</button> : undefined}
       />
 
@@ -77,8 +77,12 @@ export function TechniciansPage({
             return (
               <Card key={t.id} className="hover:shadow-card-md transition-shadow">
                 <div className="flex items-start gap-3">
-                  <div className="relative">
-                    <Avatar initials={t.initials} color={t.avatar_color} size="lg" />
+                          <div className="relative">
+                    {(t as any).avatar_url ? (
+                      <img src={(t as any).avatar_url} alt={t.full_name} className="h-14 w-14 rounded-full object-cover border border-ink-200" />
+                    ) : (
+                      <Avatar initials={t.initials} color={t.avatar_color} size="lg" />
+                    )}
                     <span className={cn('absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full ring-2 ring-white', t.status === 'active' ? 'bg-emerald-500' : 'bg-ink-300')} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -95,8 +99,20 @@ export function TechniciansPage({
                 </div>
                 <div className="mt-3"><ProgressBar value={Math.min(100, active.length * 30)} barClass="bg-primary-500" /></div>
                 <div className="flex items-center gap-2 mt-4">
-                  <button className="btn-secondary flex-1 h-8 text-xs"><Mail size={13} /> Correo</button>
-                  <button className="btn-secondary flex-1 h-8 text-xs"><Phone size={13} /> Numero</button>
+                  <div className="flex items-center gap-2 mt-4"></div>
+                    <a href={t.email ? `mailto:${t.email}` : undefined}
+                    className={cn('btn-secondary flex-1 h-8 text-xs justify-center', !t.email && 'opacity-50 pointer-events-none')}
+                    title={t.email || 'Sin correo registrado'}
+                  >
+                    <Mail size={13} /> Correo
+                  </a>
+                  
+                  <a  href={t.phone ? `tel:${t.phone}` : undefined}
+                    className={cn('btn-secondary flex-1 h-8 text-xs justify-center', !t.phone && 'opacity-50 pointer-events-none')}
+                    title={t.phone || 'Sin número registrado'}
+                  >
+                    <Phone size={13} /> Numero
+                  </a>
                 </div>
               </Card>
             );

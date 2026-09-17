@@ -193,18 +193,19 @@ function MyCalendar({ onSelect }: { onSelect: (w: any) => void }) {
           </div>
 
           <Card pad={false} className="overflow-hidden hidden md:block">
-            <div className="grid border-b border-ink-100 bg-ink-50/40" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
-              <div className="border-r border-ink-100" />
-              {days.map((d) => (
-                <div key={d.iso} className="px-4 py-3 text-center border-r border-ink-100 last:border-r-0">
-                  <div className="text-xs font-medium text-ink-500">{d.label}</div>
-                  <div className="text-sm font-bold text-ink-900">{d.dateLabel}</div>
-                </div>
-              ))}
-            </div>
-
             <div className="overflow-x-auto">
-              <div className="min-w-[980px] grid" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
+              <div className="min-w-[980px]">
+                <div className="grid border-b border-ink-100 bg-ink-50/40" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
+                  <div className="border-r border-ink-100" />
+                  {days.map((d) => (
+                    <div key={d.iso} className="px-4 py-3 text-center border-r border-ink-100 last:border-r-0">
+                      <div className="text-xs font-medium text-ink-500">{d.label}</div>
+                      <div className="text-sm font-bold text-ink-900">{d.dateLabel}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
                 <div className="border-r border-ink-100 relative" style={{ height: hourHeight * HOURS.length }}>
                   {HOURS.map((h) => (
                     <div key={h} className="border-b border-ink-50 flex items-start justify-end pr-1.5 pt-0.5" style={{ height: hourHeight }}>
@@ -246,6 +247,7 @@ function MyCalendar({ onSelect }: { onSelect: (w: any) => void }) {
                     </div>
                   );
                 })}
+                </div>
               </div>
             </div>
           </Card>
@@ -293,8 +295,8 @@ function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'a
   return (
     <div>
       <PageHeader
-        title="Calendario Semanal de Trabajo"
-        subtitle={`${weekRangeLabel(days)} · click para editar, reasignacion de tareas, o reprogramar`}
+        title="Calendario"
+        subtitle={`${weekRangeLabel(days)} · click para editar, reasignación de tareas, o reprogramar`}
         breadcrumbs={['Home', role === 'admin' ? 'Administrator' : 'Supervisor', 'Calendar']}
         actions={
           <>
@@ -310,7 +312,7 @@ function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'a
 
       <div className="mb-4 flex items-center gap-2">
         <Filter size={14} className="text-ink-400" />
-        <select value={filterTech} onChange={(e) => setFilterTech(e.target.value)} className="input h-9 w-auto">
+        <select value={filterTech} onChange={(e) => setFilterTech(e.target.value)} className="input h-10 w-auto py-0 leading-normal">
           <option value="all">Todos los tecnicos ({technicians.length})</option>
           {technicians.map((t) => <option key={t.id} value={t.id}>{t.full_name}</option>)}
         </select>
@@ -331,25 +333,26 @@ function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'a
           </div>
 
           <Card pad={false} className="overflow-hidden hidden md:block">
-            <div className="grid border-b border-ink-100 bg-ink-50/40" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
-              <div className="border-r border-ink-100" />
-              {days.map((d) => (
-                <div key={d.iso} className="px-4 py-3 text-center border-r border-ink-100 last:border-r-0">
-                  <div className="text-xs font-medium text-ink-500">{d.label}</div>
-                  <div className="text-sm font-bold text-ink-900">{d.dateLabel}</div>
-                </div>
-              ))}
-            </div>
-
             <div className="overflow-x-auto">
-              <div className="min-w-[980px] grid" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
-                <div className="border-r border-ink-100 relative" style={{ height: hourHeight * HOURS.length }}>
+              <div className="min-w-[980px]">
+                <div className="grid border-b border-ink-100 bg-ink-50/40" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
+                  <div className="border-r border-ink-100" />
+                  {days.map((d) => (
+                    <div key={d.iso} className="px-4 py-3 text-center border-r border-ink-100 last:border-r-0">
+                      <div className="text-xs font-medium text-ink-500">{d.label}</div>
+                      <div className="text-sm font-bold text-ink-900">{d.dateLabel}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
+                  <div className="border-r border-ink-100 relative" style={{ height: hourHeight * HOURS.length }}>
                   {HOURS.map((h) => (
                     <div key={h} className="border-b border-ink-50 flex items-start justify-end pr-1.5 pt-0.5" style={{ height: hourHeight }}>
                       <span className="text-[10px] text-ink-400">{h}:00</span>
                     </div>
                   ))}
-                </div>
+                  </div>
 
                 {days.map((d) => {
                   const dayOrders = visibleOrders.filter((w) => w.scheduled_date === d.iso);
@@ -385,7 +388,8 @@ function TeamCalendar({ onSelect, role }: { onSelect: (w: any) => void; role: 'a
                       </div>
                     </div>
                   );
-                })}
+                  })}
+                </div>
               </div>
             </div>
           </Card>

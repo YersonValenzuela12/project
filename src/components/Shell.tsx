@@ -52,7 +52,7 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
     ]},
     { group: 'Recursos', items: [
       { label: 'Documentos', icon: FolderOpen, page: 'documents' },
-      { label: 'Formularis', icon: FormInput, page: 'forms' },
+      { label: 'Formularios', icon: FormInput, page: 'forms' },
       { label: 'Reports', icon: BarChart3, page: 'reports' },
     ]},
   ],
@@ -94,12 +94,16 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
 };
 {/**  { label: 'Roles & Permisos', icon: ShieldCheck, page: 'permissions' },   esto es de admin -administracion */}
 
+// Pantallas que usan la barra de búsqueda. Si una pantalla no está aquí,
+// la barra simplemente no se muestra.
 const SEARCH_PLACEHOLDER: Record<string, string> = {
-  workorders: 'Search work orders…',
-  today: 'Search work orders…',
-  technicians: 'Search technicians…',
-  supervisors: 'Search supervisors…',
-  users: 'Search users…',
+  workorders: 'Buscar por cliente, código o servicio…',
+  today: 'Buscar por cliente o código…',
+  technicians: 'Buscar técnico…',
+  supervisors: 'Buscar supervisor…',
+  users: 'Buscar por nombre o correo…',
+  documents: 'Buscar documento o persona…',
+  history: 'Buscar en mi historial…',
 };
 
 function timeAgo(iso: string) {
@@ -136,7 +140,8 @@ export function Shell({ role, page, setPage, onLogout, searchQuery, onSearchChan
   const userInitials = profile?.initials ?? 'U';
   const userAvatarColor = profile?.avatar_color ?? 'bg-primary-600';
   const nav = navByRole[role];
-  const searchPlaceholder = SEARCH_PLACEHOLDER[page] ?? 'Busca ordenes de trabajo, clientes, tecnicos…';
+  const searchPlaceholder = SEARCH_PLACEHOLDER[page];
+  const showSearch = !!searchPlaceholder;
 
   useEffect(() => {
     if (!profile) return;
@@ -263,6 +268,7 @@ export function Shell({ role, page, setPage, onLogout, searchQuery, onSearchChan
             >
               <Logo showText={false} />
             </button>
+            {showSearch && (
             <div className="hidden sm:flex items-center gap-4 flex-1 max-w-md">
               <div className="relative w-full">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
@@ -274,6 +280,7 @@ export function Shell({ role, page, setPage, onLogout, searchQuery, onSearchChan
                 />
               </div>
             </div>
+                        )}
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink-50 border border-ink-200">
