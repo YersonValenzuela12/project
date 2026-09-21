@@ -21,6 +21,8 @@ import { NotificationsPage, HelpPage } from '@/pages/common/NotificationsHelp';
 import { FullPageLoader } from '@/components/ui';
 import { CoordinadorDashboard } from '@/pages/coordinadorDeOperaciones/CoordinadorDashboard';
 import { AttendancePage, AdminAttendancePage } from '@/pages/common/AttendancePage';
+import { PersonnelLocationPage } from '@/pages/admin/PersonnelLocationPage';
+import { recordUserLocation } from '@/lib/locationTracking';
 
 const BREADCRUMB_ROLE_LABEL: Record<Role, string> = {
   admin: 'Administrator',
@@ -36,6 +38,9 @@ function App() {
 
   useEffect(() => {
     setPage('dashboard');
+    if (session?.user?.id) {
+      recordUserLocation(session.user.id, 'LOGIN');
+    }
   }, [session?.user?.id]);
 
   // Clear the top search bar whenever the visible screen changes, so a
@@ -97,14 +102,16 @@ function App() {
       case 'form_requests':
         return <AdminFormsPage readOnly={role !== 'admin'} />;
       case 'history':
-        return <HistoryPage/>;
+        return <HistoryPage externalQuery={globalQuery}/>;
       case 'profile':
         return <ProfilePage />;
       case 'notifications':
         return <NotificationsPage />;
       case 'attendance':
         return role === 'admin' ? <AdminAttendancePage /> : <AttendancePage />;
-      case 'help':
+      case 'personnel_location':
+        return <PersonnelLocationPage />;
+        case 'help':
         return <HelpPage />;
       default:
         return <AdminDashboard setPage={goPage} onAction={() => goPage('workorders')} />;

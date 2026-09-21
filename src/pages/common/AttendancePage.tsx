@@ -5,6 +5,7 @@ import { Card, SectionHeader, Avatar, Badge } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
+import { recordUserLocation } from '@/lib/locationTracking';
 
 function getShiftDate(d = new Date()) {
   const boundary = new Date(d);
@@ -77,14 +78,15 @@ export function AttendancePage() {
         check_in_lat: coords.lat,
         check_in_lng: coords.lng,
       }, { onConflict: 'user_id,attendance_date' }).select().single();
-      if (!error) { setRecord(data); setMode('salida'); }
+      if (!error) { setRecord(data); setMode('salida'); 
+        recordUserLocation(profile.id, 'ATTENDANCE', coords);}
     } else if (record) {
       const { data, error } = await supabase.from('attendance').update({
         check_out_at: new Date().toISOString(),
         check_out_lat: coords.lat,
         check_out_lng: coords.lng,
       }).eq('id', record.id).select().single();
-      if (!error) setRecord(data);
+            if (!error) { setRecord(data); recordUserLocation(profile.id, 'ATTENDANCE', coords); }
     }
     setSubmitting(false);
   };

@@ -269,7 +269,7 @@ function isImageFile(name: string) {
   return /\.(png|jpe?g|gif|webp)$/i.test(name);
 }
 
-export function HistoryPage() {
+export function HistoryPage({ externalQuery = '' }: { externalQuery?: string }) {
   const { profile } = useAuth();
   const [completedOrders, setCompletedOrders] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
@@ -315,6 +315,15 @@ export function HistoryPage() {
     a.click();
   };
 
+  const q = externalQuery.toLowerCase();
+  const filteredOrders = completedOrders.filter((h) =>
+    !q ||
+    h.code.toLowerCase().includes(q) ||
+    h.client.toLowerCase().includes(q) ||
+    (SERVICE_LABELS_ES[h.service_type] ?? h.service_type).toLowerCase().includes(q) ||
+    'completado'.includes(q),
+  );
+
   if (loading) {
     return (
       <div>
@@ -329,9 +338,9 @@ export function HistoryPage() {
       <PageHeader title="Mi Historial" subtitle="Órdenes completadas, reportes y documentos subidos" breadcrumbs={['Inicio', 'Técnico', 'Historial']} />
 
       <Card pad={false} className="overflow-hidden mb-6">
-        <div className="p-5 pb-3"><SectionHeader title="Órdenes de Trabajo Completadas" subtitle={`${completedOrders.length} trabajo${completedOrders.length === 1 ? '' : 's'}`} /></div>
-        {completedOrders.length === 0 ? (
-          <div className="p-8 text-center text-sm text-ink-500">Aún no tienes órdenes completadas.</div>
+        <div className="p-5 pb-3"><SectionHeader title="Órdenes de Trabajo Completadas" subtitle={`${filteredOrders.length} trabajo${filteredOrders.length === 1 ? '' : 's'}`} /></div>
+        {filteredOrders.length === 0 ? (
+          <div className="p-8 text-center text-sm text-ink-500">{q ? 'Ninguna orden coincide con tu búsqueda.' : 'Aún no tienes órdenes completadas.'}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[700px]">
@@ -339,7 +348,7 @@ export function HistoryPage() {
                 <tr><th className="th">Orden</th><th className="th">Cliente</th><th className="th">Servicio</th><th className="th">Fecha</th><th className="th">Estado</th></tr>
               </thead>
               <tbody className="divide-y divide-ink-50">
-                {completedOrders.map((h) => (
+                {filteredOrders.map((h) => (
                   <tr key={h.id} className="hover:bg-ink-50/40">
                     <td className="td font-mono text-xs font-semibold text-primary-700">{h.code}</td>
                     <td className="td font-medium text-ink-900">{h.client}</td>

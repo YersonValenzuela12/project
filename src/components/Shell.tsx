@@ -23,6 +23,7 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
      
       { label: 'Supervisores', icon: Building2, page: 'supervisors' },
       { label: 'Tecnicos', icon: Wrench, page: 'technicians' },
+      { label: 'Ubicación del Personal', icon: MapPin, page: 'personnel_location' },
     ]},
     { group: 'Operationes', items: [
       { label: 'Ordenes de Trabajo', icon: ClipboardList, page: 'workorders' },
