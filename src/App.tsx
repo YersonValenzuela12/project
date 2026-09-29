@@ -23,6 +23,8 @@ import { CoordinadorDashboard } from '@/pages/coordinadorDeOperaciones/Coordinad
 import { AttendancePage, AdminAttendancePage } from '@/pages/common/AttendancePage';
 import { PersonnelLocationPage } from '@/pages/admin/PersonnelLocationPage';
 import { recordUserLocation } from '@/lib/locationTracking';
+import { logActivity } from '@/lib/activityLog';
+import { startOtTrackingLoop } from '@/lib/otTracking';
 
 const BREADCRUMB_ROLE_LABEL: Record<Role, string> = {
   admin: 'Administrator',
@@ -42,6 +44,18 @@ function App() {
       recordUserLocation(session.user.id, 'LOGIN');
     }
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!profile || profile.role === 'admin') return;
+    const stop = startOtTrackingLoop(profile.id);
+    return stop;
+  }, [profile?.id]);
+
+  useEffect(() => {
+    if (session?.user?.id && profile) {
+      logActivity({ actorName: profile.full_name, action: 'LOGIN', target: 'user', detail: 'Inicio de sesión' });
+    }
+  }, [session?.user?.id, profile?.id]);
 
   // Clear the top search bar whenever the visible screen changes, so a
   // leftover query from one page doesn't silently filter a different one.

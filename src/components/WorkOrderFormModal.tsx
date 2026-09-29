@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Modal, Avatar, Badge } from '@/components/ui';
 import { supabase } from '@/lib/supabase';
+import { syncTrackingSessionsForWorkOrder } from '@/lib/otTracking';
 
 interface PersonOption {
   id: string;
@@ -307,6 +308,10 @@ export function WorkOrderFormModal({
       } catch (e) {
         console.error('Google Calendar sync failed:', e);
       }
+    }
+
+    if (orderId) {
+      syncTrackingSessionsForWorkOrder(orderId).catch((e) => console.error('No se pudo sincronizar el seguimiento:', e));
     }
 
     setSaving(false);

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { Avatar, Modal } from '@/components/ui';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth';
+import { logActivity } from '@/lib/activityLog';
 import type { Role } from '@/data/mockData';
 
 export interface ProfileRow {
@@ -31,6 +33,7 @@ export function UserFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { profile: adminProfile } = useAuth();
   const [name, setName] = useState(user?.full_name ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
   const [password, setPassword] = useState('');
@@ -60,6 +63,17 @@ export function UserFormModal({
         .eq('id', user.id);
       setSaving(false);
       if (updateError) { setError(updateError.message); return; }
+
+      const roleChanged = user.role !== role;
+      await logActivity({
+        actorName: adminProfile?.full_name ?? 'Administrador',
+        action: roleChanged ? 'ROLE_UPDATED' : 'USER_PROFILE_UPDATED',
+        target: 'user',
+        detail: roleChanged
+          ? `${name} · rol cambiado de ${user.role} a ${role}`
+          : `${name} · datos del perfil actualizados`,
+      });
+
       onSaved();
       return;
     }
@@ -78,6 +92,14 @@ export function UserFormModal({
     const json = await res.json();
     setSaving(false);
     if (!res.ok) { setError(json.error || 'Unable to create user.'); return; }
+
+    await logActivity({
+      actorName: adminProfile?.full_name ?? 'Administrador',
+      action: 'ROLE_ASSIGNED',
+      target: 'user',
+      detail: `${name} · usuario creado con rol ${role}`,
+    });
+
     onSaved();
   };
 

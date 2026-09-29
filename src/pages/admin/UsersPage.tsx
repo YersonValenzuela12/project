@@ -6,6 +6,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { Card, Avatar, Badge } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth';
+import { logActivity } from '@/lib/activityLog';
 import type { Role } from '@/data/mockData';
 import { UserFormModal, type ProfileRow } from '@/components/UserFormModal';
 
@@ -17,6 +19,7 @@ const roleBadge: Record<Role, string> = {
 };
 
 export function UsersPage({ externalQuery = '' }: { externalQuery?: string }) {
+  const { profile: adminProfile } = useAuth();
   const [rows, setRows] = useState<ProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterRole, setFilterRole] = useState<string>('all');
@@ -50,7 +53,15 @@ export function UsersPage({ externalQuery = '' }: { externalQuery?: string }) {
     setMenuId(null);
     const newStatus = u.status === 'active' ? 'suspended' : 'active';
     const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', u.id);
-    if (!error) fetchUsers();
+    if (!error) {
+      await logActivity({
+        actorName: adminProfile?.full_name ?? 'Administrador',
+        action: newStatus === 'suspended' ? 'PERMISSION_SUSPENDED' : 'PERMISSION_REACTIVATED',
+        target: 'user',
+        detail: `${u.full_name} · ${newStatus === 'suspended' ? 'cuenta suspendida' : 'cuenta reactivada'}`,
+      });
+      fetchUsers();
+    }
   };
 
   return (
@@ -97,7 +108,7 @@ export function UsersPage({ externalQuery = '' }: { externalQuery?: string }) {
                 <tr key={u.id} className="hover:bg-ink-50/40">
                   <td className="td">
                     <div className="flex items-center gap-3">
-                       {(u as any).avatar_url ? (
+                      {(u as any).avatar_url ? (
                         <img src={(u as any).avatar_url} alt={u.full_name} className="h-8 w-8 rounded-full object-cover" />
                       ) : (
                         <Avatar initials={u.initials} color={u.avatar_color} size="sm" />
@@ -160,6 +171,7 @@ export function UsersPage({ externalQuery = '' }: { externalQuery?: string }) {
 }
 
 function DisconnectGoogleModal({ user, onClose, onSaved }: { user: ProfileRow; onClose: () => void; onSaved: () => void }) {
+  const { profile: adminProfile } = useAuth();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -179,6 +191,12 @@ function DisconnectGoogleModal({ user, onClose, onSaved }: { user: ProfileRow; o
     const json = await res.json();
     setSaving(false);
     if (!res.ok) { setError(json.error || 'No se pudo desconectar la cuenta.'); return; }
+    await logActivity({
+      actorName: adminProfile?.full_name ?? 'Administrador',
+      action: 'PERMISSION_GOOGLE_DISCONNECTED',
+      target: 'user',
+      detail: `${user.full_name} · sincronización con Google Calendar desconectada`,
+    });
     onSaved();
   };
 
@@ -208,6 +226,7 @@ function DisconnectGoogleModal({ user, onClose, onSaved }: { user: ProfileRow; o
 }
 
 function ChangeEmailModal({ user, onClose, onSaved }: { user: ProfileRow; onClose: () => void; onSaved: () => void }) {
+  const { profile: adminProfile } = useAuth();
   const [email, setEmail] = useState(user.email ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -230,6 +249,12 @@ function ChangeEmailModal({ user, onClose, onSaved }: { user: ProfileRow; onClos
     const json = await res.json();
     setSaving(false);
     if (!res.ok) { setError(json.error || 'No se pudo actualizar el correo.'); return; }
+    await logActivity({
+      actorName: adminProfile?.full_name ?? 'Administrador',
+      action: 'EMAIL_CHANGED',
+      target: 'user',
+      detail: `${user.full_name} · correo actualizado a ${email}`,
+    });
     setDone(true);
   };
 
@@ -274,6 +299,7 @@ function ChangeEmailModal({ user, onClose, onSaved }: { user: ProfileRow; onClos
 }
 
 function ResetPasswordModal({ user, onClose }: { user: ProfileRow; onClose: () => void }) {
+  const { profile: adminProfile } = useAuth();
   const [password, setPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -296,6 +322,12 @@ function ResetPasswordModal({ user, onClose }: { user: ProfileRow; onClose: () =
     const json = await res.json();
     setSaving(false);
     if (!res.ok) { setError(json.error || 'Unable to reset password.'); return; }
+    await logActivity({
+      actorName: adminProfile?.full_name ?? 'Administrador',
+      action: 'PASSWORD_RESET',
+      target: 'user',
+      detail: `${user.full_name} · contraseña restablecida por un administrador`,
+    });
     setDone(true);
   };
 

@@ -20,7 +20,7 @@ function categorize(action: string): 'Activity' | 'Logins' | 'System' | 'Securit
   const a = action.toUpperCase();
   if (a.includes('LOGIN')) return 'Logins';
   if (a.includes('BACKUP') || a.includes('SYSTEM')) return 'System';
-  if (a.includes('ROLE') || a.includes('POLICY') || a.includes('PERMISSION') || a.includes('PASSWORD')) return 'Security';
+  if (a.includes('ROLE') || a.includes('POLICY') || a.includes('PERMISSION') || a.includes('PASSWORD') || a.includes('EMAIL')) return 'Security';
   return 'Activity';
 }
 
