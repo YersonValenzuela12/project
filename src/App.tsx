@@ -13,6 +13,7 @@ import { SupervisorDashboard } from '@/pages/supervisor/SupervisorDashboard';
 import { CalendarPage } from '@/pages/supervisor/CalendarPage';
 import { TechnicianDashboard } from '@/pages/technician/TechnicianDashboard';
 import { FormsPage, HistoryPage, AdminFormsPage } from '@/pages/technician/FormsHistory';
+import { WorkspacePage } from '@/pages/common/WorkspacePage';
 import { WorkOrdersPage } from '@/pages/WorkOrdersPage';
 import { WorkOrderDetail } from '@/pages/WorkOrderDetail';
 import { TechniciansPage } from '@/pages/common/TechniciansPage';
@@ -113,6 +114,8 @@ function App() {
         return <SettingsPage />;
       case 'forms':
         return <FormsPage />;
+        case 'workspace':
+        return <WorkspacePage />;
       case 'form_requests':
         return <AdminFormsPage readOnly={role !== 'admin'} />;
       case 'history':

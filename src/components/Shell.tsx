@@ -51,9 +51,10 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
       { label: 'Tecnicos', icon: Wrench, page: 'technicians' },
       { label: 'Asistencia', icon: Clock, page: 'attendance' },
     ]},
-    { group: 'Recursos', items: [
+     { group: 'Recursos', items: [
       { label: 'Documentos', icon: FolderOpen, page: 'documents' },
       { label: 'Formularios', icon: FormInput, page: 'forms' },
+      { label: 'Espacio de Trabajo', icon: FileText, page: 'workspace' },
       { label: 'Reports', icon: BarChart3, page: 'reports' },
     ]},
   ],
@@ -66,6 +67,7 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
     { group: 'Recurcursos', items: [
       { label: 'Documentos', icon: FolderOpen, page: 'documents' },
       { label: 'Formularios', icon: FormInput, page: 'forms' },
+      { label: 'Espacio de Trabajo', icon: FileText, page: 'workspace' },
     ]},
     { group: 'Seguridad', items: [
       { label: 'Asistencia', icon: Clock, page: 'attendance' },

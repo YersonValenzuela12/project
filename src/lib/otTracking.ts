@@ -117,7 +117,7 @@ async function ensureTrackingSession(userId: string, woId: string, start: Date, 
 async function closeExpiredSessions(userId: string) {
   await supabase
     .from('tracking_sessions')
-    .update({ status: 'FINALIZADA' })
+    .update({ status: 'FINALIZADO' })
     .eq('user_id', userId)
     .eq('status', 'ACTIVO')
     .lt('end_at', new Date().toISOString());
