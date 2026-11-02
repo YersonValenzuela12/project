@@ -10,6 +10,7 @@ import { serviceColor } from '@/data/mockData';
 import { supabase } from '@/lib/supabase';
 import { useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
+import { SupportCard } from '@/components/SupportCard';
 
 
   function formatBytes(bytes: number) {
@@ -584,8 +585,9 @@ export function ProfilePage() {
             <InfoLine label="Correo" value={user.email} />
             <InfoLine label="Telefono" value={user.phone} />
             <InfoLine label="Distrito" value={user.region} />
-            <InfoLine label="Perfil" value={user.joined} />
+             <InfoLine label="Perfil" value={user.joined} />
           </div>
+          <SupportCard />
         </Card>
 
         <div className="lg:col-span-2 space-y-5">
@@ -660,7 +662,7 @@ export function ProfilePage() {
           <Card>
             <SectionHeader title="Habilidades & Certificaciones" />
             <div className="flex flex-wrap gap-2">
-              {['CCTV — Level 3', 'Access Control — Level 2', 'Fire Alarm — NFPA 72', 'Fiber Splicing', 'BMS — Siemens Desigo', 'OSHA 30', 'First Aid / CPR'].map((s) => (
+              {['CCTV', 'Access Control ', 'Fire Alarm ', 'Fiber Splicing', 'BMS '].map((s) => (
                 <Badge key={s} className="bg-primary-50 text-primary-700">{s}</Badge>
               ))}
             </div>

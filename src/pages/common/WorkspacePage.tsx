@@ -1138,10 +1138,12 @@ function TableEditorModal({ doc, myPermission, owner, onClose, onSaved, notify }
   };
   const addColumn = () => {
     pushUndo();
+    pendingScroll.current = 'col';
     setColumns((prev) => [...prev, { id: `new-col-${Date.now()}`, name: `Columna ${prev.length + 1}`, position: prev.length, data_type: 'text', _new: true }]);
   };
   const addRow = () => {
     pushUndo();
+    pendingScroll.current = 'row';
     setRows((prev) => [...prev, { id: `new-row-${Date.now()}`, position: prev.length, _new: true }]);
   };
   const renameColumn = (colId: string, name: string) => {
@@ -1327,215 +1329,238 @@ function TableEditorModal({ doc, myPermission, owner, onClose, onSaved, notify }
 
   const selectionOverlay = <div className="absolute inset-0 pointer-events-none ring-2 ring-inset ring-primary-500 bg-primary-500/10" />;
 
+  // After adding a row or column, scroll the table so the new one is visible.
+  const scrollBoxRef = useRef<HTMLDivElement>(null);
+  const pendingScroll = useRef<'row' | 'col' | null>(null);
+  useEffect(() => {
+    const el = scrollBoxRef.current;
+    const what = pendingScroll.current;
+    if (!el || !what) return;
+    if (what === 'row') el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    else el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
+    pendingScroll.current = null;
+  }, [rows.length, columns.length]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-ink-900/50" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[88vh] overflow-y-auto p-6">
-        <div className="flex items-center gap-2 flex-wrap mb-1">
-          <input
-            className="text-lg font-bold text-ink-900 border-none focus:outline-none flex-1 min-w-[160px]"
-            value={title}
-            onChange={(e) => { setTitle(e.target.value); setDirty(true); }}
-            disabled={!canEdit}
-          />
-          {canEdit && (
-            <FormatToolbar
-              state={{ b: flagOn('b'), i: flagOn('i'), u: flagOn('u'), up: flagOn('up'), a: alignState }}
-              disabled={infos.length === 0}
-              onBold={() => toggleFlag('b')}
-              onItalic={() => toggleFlag('i')}
-              onUnderline={() => toggleFlag('u')}
-              onAlign={setAlign}
-              onUpper={() => toggleFlag('up')}
-              onColor={applyColor}
-              currentColor={currentColor}
-              typeValue={typeState}
-              onType={applyType}
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[94vh] flex flex-col overflow-hidden">
+        {/* Top bar (fixed): title, formatting tools and actions stay in view while the table scrolls */}
+        <div className="shrink-0 px-6 pt-5 pb-3 border-b border-ink-100">
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              className="text-lg font-bold text-ink-900 border-none focus:outline-none flex-1 min-w-[160px]"
+              value={title}
+              onChange={(e) => { setTitle(e.target.value); setDirty(true); }}
+              disabled={!canEdit}
             />
-          )}
-          <div className="flex items-center gap-1 shrink-0">
             {canEdit && (
-              <>
-                <button onClick={undo} disabled={!undoSnap} className={iconBtn} title="Deshacer el último cambio"><Undo2 size={16} /></button>
-                <button
-                  onClick={restoreBackup}
-                  disabled={!backupInfo}
-                  className={iconBtn}
-                  title={backupInfo ? `Cargar la versión anterior (guardada el ${new Date(backupInfo.saved_at).toLocaleString('es-PE')})` : 'Aún no hay una versión anterior guardada'}
-                >
-                  <RotateCcw size={16} />
-                </button>
-              </>
+              <FormatToolbar
+                state={{ b: flagOn('b'), i: flagOn('i'), u: flagOn('u'), up: flagOn('up'), a: alignState }}
+                disabled={infos.length === 0}
+                onBold={() => toggleFlag('b')}
+                onItalic={() => toggleFlag('i')}
+                onUnderline={() => toggleFlag('u')}
+                onAlign={setAlign}
+                onUpper={() => toggleFlag('up')}
+                onColor={applyColor}
+                currentColor={currentColor}
+                typeValue={typeState}
+                onType={applyType}
+              />
             )}
-            <button onClick={handleCopy} className={iconBtn} title="Copiar tabla"><ClipboardCopy size={16} /></button>
-            <button onClick={() => setShareOpen(true)} className={iconBtn} title="Compartir"><Share2 size={16} /></button>
-            <button onClick={onClose} className={iconBtn}><X size={16} /></button>
+            <div className="flex items-center gap-1 shrink-0">
+              {canEdit && (
+                <>
+                  <button onClick={undo} disabled={!undoSnap} className={iconBtn} title="Deshacer el último cambio"><Undo2 size={16} /></button>
+                  <button
+                    onClick={restoreBackup}
+                    disabled={!backupInfo}
+                    className={iconBtn}
+                    title={backupInfo ? `Cargar la versión anterior (guardada el ${new Date(backupInfo.saved_at).toLocaleString('es-PE')})` : 'Aún no hay una versión anterior guardada'}
+                  >
+                    <RotateCcw size={16} />
+                  </button>
+                </>
+              )}
+              <button onClick={handleCopy} className={iconBtn} title="Copiar tabla"><ClipboardCopy size={16} /></button>
+              <button onClick={() => setShareOpen(true)} className={iconBtn} title="Compartir"><Share2 size={16} /></button>
+              <button onClick={onClose} className={iconBtn}><X size={16} /></button>
+            </div>
           </div>
+          <div className="-mb-2 mt-1"><DocInfoLine doc={doc} owner={owner} /></div>
         </div>
-        <DocInfoLine doc={doc} owner={owner} />
 
-        {loading ? (
-          <div className="py-8 text-center text-sm text-ink-500">Cargando…</div>
-        ) : (
-          <>
-            <div className="overflow-x-auto border border-ink-300 rounded-lg">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr>
-                    <th className="w-9 min-w-[36px] bg-ink-100 border border-ink-200" />
-                    {columns.map((col, ci) => (
-                      <th key={col.id} className="bg-ink-100 border border-ink-200 p-0 font-normal">
-                        <div
-                          className={cn('flex items-center justify-center h-6 text-[11px] font-semibold text-ink-500 select-none', canEdit && 'cursor-pointer hover:bg-ink-200/60')}
-                          onClick={() => selectColumn(ci)}
-                        >
-                          {colLetter(ci)}
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                  <tr>
-                    <th
-                      className={cn('bg-ink-100 border border-ink-200 text-[10px] font-semibold text-ink-400 select-none', canEdit && 'cursor-pointer hover:bg-ink-200/60')}
-                      title="Seleccionar la fila de títulos"
-                      onClick={() => selectRow(-1)}
-                    >
-                      T
-                    </th>
-                    {columns.map((col, ci) => {
-                      const hk = headerKey(col.id);
-                      const style = cellStyles.get(hk) ?? {};
-                      const bg = resolveColor(cellColors.get(hk));
-                      return (
-                        <th
-                          key={col.id}
-                          className="bg-ink-50 border border-ink-200 p-0 relative"
-                          style={bg !== 'transparent' ? { backgroundColor: bg } : undefined}
-                          onMouseDown={(e) => handleCellMouseDown(e, -1, ci)}
-                        >
-                          <input
-                            className="w-full h-9 min-w-[120px] px-2 bg-transparent outline-none text-xs text-ink-800"
-                            style={{
-                              textAlign: style.a ?? 'left',
-                              fontWeight: isFlagOn(hk, 'b') ? 700 : 400,
-                              fontStyle: style.i ? 'italic' : 'normal',
-                              textDecoration: style.u ? 'underline' : 'none',
-                              textTransform: style.up ? 'uppercase' : 'none',
-                              color: contrastText(bg),
-                            }}
-                            value={col.name}
-                            onChange={(e) => renameColumn(col.id, e.target.value)}
-                            onFocus={() => handleCellFocus(-1, ci)}
-                            readOnly={!canEdit}
-                          />
-                          {isSelected(-1, ci) && selectionOverlay}
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, ri) => (
-                    <tr key={row.id}>
-                      <td
-                        className={cn('bg-ink-100 border border-ink-200 text-center text-[11px] font-semibold text-ink-500 select-none', canEdit && 'cursor-pointer hover:bg-ink-200/60')}
-                        onClick={() => selectRow(ri)}
-                      >
-                        {ri + 1}
-                      </td>
-                      {columns.map((col, ci) => {
-                        const key = `${row.id}:${col.id}`;
-                        const value = cells.get(key) ?? '';
-                        const style = cellStyles.get(key) ?? {};
-                        const type = effType(key, col);
-                        const bg = resolveColor(cellColors.get(key));
-                        const align = style.a ?? (type === 'number' ? 'right' : 'left');
-                        const textStyle = {
-                          textAlign: align,
-                          fontWeight: style.b ? 700 : 400,
-                          fontStyle: style.i ? 'italic' : 'normal',
-                          textDecoration: style.u ? 'underline' : 'none',
-                          textTransform: style.up ? 'uppercase' : 'none',
-                          color: contrastText(bg),
-                        } as const;
-                        const common = 'w-full h-9 min-w-[120px] px-2 bg-transparent outline-none text-xs text-ink-900';
-                        return (
-                          <td
-                            key={col.id}
-                            className="border border-ink-200 p-0 relative"
-                            style={{ backgroundColor: bg }}
-                            onMouseDown={(e) => handleCellMouseDown(e, ri, ci)}
+        {/* Middle: only the table scrolls. Column letters, titles and row numbers stay pinned. */}
+        <div className="flex-1 min-h-0 flex flex-col px-6 py-3">
+          {loading ? (
+            <div className="py-8 text-center text-sm text-ink-500">Cargando…</div>
+          ) : (
+            <>
+              <div ref={scrollBoxRef} className="flex-1 min-h-0 overflow-auto border border-ink-300 rounded-lg">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr>
+                      <th className="sticky top-0 left-0 z-[31] w-9 min-w-[36px] bg-ink-100 border border-ink-200 shadow-[inset_-1px_-1px_0_#d1d5db]" />
+                      {columns.map((col, ci) => (
+                        <th key={col.id} className="sticky top-0 z-[21] bg-ink-100 border border-ink-200 p-0 font-normal shadow-[inset_0_-1px_0_#d1d5db]">
+                          <div
+                            className={cn('flex items-center justify-center h-6 text-[11px] font-semibold text-ink-500 select-none', canEdit && 'cursor-pointer hover:bg-ink-200/60')}
+                            onClick={() => selectColumn(ci)}
                           >
-                            {type === 'status' ? (
-                              <select
-                                className={common}
-                                style={textStyle}
-                                value={value}
-                                onChange={(e) => setCell(row.id, col.id, e.target.value)}
-                                onFocus={() => handleCellFocus(ri, ci)}
-                                disabled={!canEdit}
-                              >
-                                <option value="">—</option>
-                                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-                              </select>
-                            ) : (
-                              <input
-                                type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
-                                className={cn(common, '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none')}
-                                style={textStyle}
-                                value={value}
-                                onChange={(e) => setCell(row.id, col.id, e.target.value)}
-                                onFocus={() => handleCellFocus(ri, ci)}
-                                readOnly={!canEdit}
-                              />
-                            )}
-                            {isSelected(ri, ci) && selectionOverlay}
-                          </td>
+                            {colLetter(ci)}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                    <tr>
+                      <th
+                        className={cn('sticky top-[23px] left-0 z-30 bg-ink-100 border border-ink-200 text-[10px] font-semibold text-ink-400 select-none shadow-[inset_-1px_-1px_0_#d1d5db]', canEdit && 'cursor-pointer hover:bg-ink-200/60')}
+                        title="Seleccionar la fila de títulos"
+                        onClick={() => selectRow(-1)}
+                      >
+                        T
+                      </th>
+                      {columns.map((col, ci) => {
+                        const hk = headerKey(col.id);
+                        const style = cellStyles.get(hk) ?? {};
+                        const bg = resolveColor(cellColors.get(hk));
+                        return (
+                          <th
+                            key={col.id}
+                            className="sticky top-[23px] z-20 bg-ink-50 border border-ink-200 p-0 shadow-[inset_0_-1px_0_#d1d5db]"
+                            style={bg !== 'transparent' ? { backgroundColor: bg } : undefined}
+                            onMouseDown={(e) => handleCellMouseDown(e, -1, ci)}
+                          >
+                            <input
+                              className="w-full h-9 min-w-[120px] px-2 bg-transparent outline-none text-xs text-ink-800"
+                              style={{
+                                textAlign: style.a ?? 'left',
+                                fontWeight: isFlagOn(hk, 'b') ? 700 : 400,
+                                fontStyle: style.i ? 'italic' : 'normal',
+                                textDecoration: style.u ? 'underline' : 'none',
+                                textTransform: style.up ? 'uppercase' : 'none',
+                                color: contrastText(bg),
+                              }}
+                              value={col.name}
+                              onChange={(e) => renameColumn(col.id, e.target.value)}
+                              onFocus={() => handleCellFocus(-1, ci)}
+                              readOnly={!canEdit}
+                            />
+                            {isSelected(-1, ci) && selectionOverlay}
+                          </th>
                         );
                       })}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {canEdit && (
-              <>
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <button className="btn-secondary h-8 text-xs" onClick={addColumn}><Plus size={13} /> Columna</button>
-                  <button className="btn-secondary h-8 text-xs" onClick={addRow}><Plus size={13} /> Fila</button>
-                  <div className="ml-auto flex items-center gap-2">
-                    <button
-                      className="h-8 px-3 rounded-lg text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
-                      onClick={deleteSelectedColumns}
-                      disabled={!selection}
-                      title={selection ? 'Borrar la(s) columna(s) seleccionada(s)' : 'Selecciona primero una celda de la columna'}
-                    >
-                      <Trash2 size={13} /> Borrar columna
-                    </button>
-                    <button
-                      className="h-8 px-3 rounded-lg text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
-                      onClick={deleteSelectedRows}
-                      disabled={!selection || selection.r2 < 0}
-                      title={selection ? 'Borrar la(s) fila(s) seleccionada(s)' : 'Selecciona primero una celda de la fila'}
-                    >
-                      <Trash2 size={13} /> Borrar fila
-                    </button>
-                  </div>
-                </div>
-                <p className="text-[11px] text-ink-400 mt-2">
-                  Haz clic en una celda para darle formato o cambiar su tipo. Con Shift+clic seleccionas varias; toca el número de una fila, la letra de una columna o la «T» de los títulos para seleccionarlas completas. Si te equivocas, usa ↶ Deshacer; los cambios se aplican al pulsar Guardar.
+                  </thead>
+                  <tbody>
+                    {rows.map((row, ri) => (
+                      <tr key={row.id}>
+                        <td
+                          className={cn('sticky left-0 z-10 bg-ink-100 border border-ink-200 text-center text-[11px] font-semibold text-ink-500 select-none shadow-[inset_-1px_0_0_#d1d5db]', canEdit && 'cursor-pointer hover:bg-ink-200/60')}
+                          onClick={() => selectRow(ri)}
+                        >
+                          {ri + 1}
+                        </td>
+                        {columns.map((col, ci) => {
+                          const key = `${row.id}:${col.id}`;
+                          const value = cells.get(key) ?? '';
+                          const style = cellStyles.get(key) ?? {};
+                          const type = effType(key, col);
+                          const bg = resolveColor(cellColors.get(key));
+                          const align = style.a ?? (type === 'number' ? 'right' : 'left');
+                          const textStyle = {
+                            textAlign: align,
+                            fontWeight: style.b ? 700 : 400,
+                            fontStyle: style.i ? 'italic' : 'normal',
+                            textDecoration: style.u ? 'underline' : 'none',
+                            textTransform: style.up ? 'uppercase' : 'none',
+                            color: contrastText(bg),
+                          } as const;
+                          const common = 'w-full h-9 min-w-[120px] px-2 bg-transparent outline-none text-xs text-ink-900';
+                          return (
+                            <td
+                              key={col.id}
+                              className="border border-ink-200 p-0 relative"
+                              style={{ backgroundColor: bg }}
+                              onMouseDown={(e) => handleCellMouseDown(e, ri, ci)}
+                            >
+                              {type === 'status' ? (
+                                <select
+                                  className={common}
+                                  style={textStyle}
+                                  value={value}
+                                  onChange={(e) => setCell(row.id, col.id, e.target.value)}
+                                  onFocus={() => handleCellFocus(ri, ci)}
+                                  disabled={!canEdit}
+                                >
+                                  <option value="">—</option>
+                                  {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                              ) : (
+                                <input
+                                  type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
+                                  className={cn(common, '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none')}
+                                  style={textStyle}
+                                  value={value}
+                                  onChange={(e) => setCell(row.id, col.id, e.target.value)}
+                                  onFocus={() => handleCellFocus(ri, ci)}
+                                  readOnly={!canEdit}
+                                />
+                              )}
+                              {isSelected(ri, ci) && selectionOverlay}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="shrink-0 flex items-center justify-between gap-3 mt-2">
+                <p className="text-[11px] text-ink-400">
+                  {canEdit
+                    ? 'Clic en una celda para darle formato o cambiar su tipo · Shift+clic selecciona varias · el número de fila, la letra de columna o la «T» las seleccionan completas · los cambios se aplican al pulsar Guardar.'
+                    : 'Solo puedes ver esta tabla — no tienes permiso de edición.'}
                 </p>
-              </>
-            )}
-          </>
-        )}
-        {!canEdit && <p className="text-xs text-ink-400 mt-3">Solo puedes ver esta tabla — no tienes permiso de edición.</p>}
-
-        <div className="flex gap-2 mt-5">
-          <button className="btn-secondary flex-1" onClick={onClose}>{canEdit ? 'Cancelar' : 'Cerrar'}</button>
-          {canEdit && <button className="btn-primary flex-1" onClick={save} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>}
+                <span className="text-[11px] text-ink-400 shrink-0">{rows.length} filas · {columns.length} columnas</span>
+              </div>
+            </>
+          )}
         </div>
-        <ActivityPanel docId={doc.id} />
+
+        {/* Bottom bar (fixed): add / delete and save are always within reach */}
+        <div className="shrink-0 px-6 py-3 border-t border-ink-100 bg-white">
+          {canEdit && !loading && (
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <button className="btn-secondary h-8 text-xs" onClick={addColumn}><Plus size={13} /> Columna</button>
+              <button className="btn-secondary h-8 text-xs" onClick={addRow}><Plus size={13} /> Fila</button>
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  className="h-8 px-3 rounded-lg text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+                  onClick={deleteSelectedColumns}
+                  disabled={!selection}
+                  title={selection ? 'Borrar la(s) columna(s) seleccionada(s)' : 'Selecciona primero una celda de la columna'}
+                >
+                  <Trash2 size={13} /> Borrar columna
+                </button>
+                <button
+                  className="h-8 px-3 rounded-lg text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+                  onClick={deleteSelectedRows}
+                  disabled={!selection || selection.r2 < 0}
+                  title={selection ? 'Borrar la(s) fila(s) seleccionada(s)' : 'Selecciona primero una celda de la fila'}
+                >
+                  <Trash2 size={13} /> Borrar fila
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button className="btn-secondary flex-1" onClick={onClose}>{canEdit ? 'Cancelar' : 'Cerrar'}</button>
+            {canEdit && <button className="btn-primary flex-1" onClick={save} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>}
+          </div>
+          <ActivityPanel docId={doc.id} />
+        </div>
       </div>
 
       {shareOpen && <ShareModal docId={doc.id} onClose={() => setShareOpen(false)} />}

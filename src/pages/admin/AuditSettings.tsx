@@ -157,6 +157,7 @@ export function SettingsPage() {
   const [dateFormat, setDateFormat] = useState('DD/MM/AAAA');
   const [currency, setCurrency] = useState('Soles (S/.)');
   const [workingHours, setWorkingHours] = useState('');
+  const [supportWhatsapp, setSupportWhatsapp] = useState('');
 
   const [userStats, setUserStats] = useState<{ total: number; active: number; suspended: number; byRole: Record<string, number> } | null>(null);
   const [docStats, setDocStats] = useState<{ total: number; sitesWithPhoto: number; totalSites: number } | null>(null);
@@ -171,6 +172,7 @@ export function SettingsPage() {
         setDateFormat(data.date_format ?? 'DD/MM/AAAA');
         setCurrency(data.currency ?? 'Soles (S/.)');
         setWorkingHours(data.working_hours ?? '');
+        setSupportWhatsapp(data.support_whatsapp ?? '');
       }
       setLoading(false);
     })();
@@ -212,6 +214,7 @@ export function SettingsPage() {
         date_format: dateFormat,
         currency,
         working_hours: workingHours,
+        support_whatsapp: supportWhatsapp.replace(/\D/g, '') || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', 'global');
@@ -282,7 +285,7 @@ export function SettingsPage() {
                       <option>Dólares ($)</option>
                     </select>
                   </div>
-                  <div><label className="label">Horario laboral</label><input className="input" value={workingHours} onChange={(e) => setWorkingHours(e.target.value)} placeholder="08:00 – 18:00" /></div>
+                  <div className="col-span-2"><label className="label">WhatsApp de soporte</label><input className="input" value={supportWhatsapp} onChange={(e) => setSupportWhatsapp(e.target.value)} placeholder="51979232158" /><p className="text-[11px] text-ink-400 mt-1">Con código de país (Perú: 51). Los usuarios verán un botón para escribirte por WhatsApp desde su perfil.</p></div>
                 </div>
               )}
             </Card>

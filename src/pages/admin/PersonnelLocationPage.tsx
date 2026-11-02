@@ -209,7 +209,13 @@ export function PersonnelLocationPage() {
             const loc = latestByUser.get(p.id);
             const status = statusFor(loc?.recorded_at ?? null);
             return (
-              <Card key={p.id} className="hover:shadow-card-md transition cursor-pointer" onClick={() => { setDateFrom(''); setDateTo(''); openHistory(p, '', ''); }}>
+              <button
+                key={p.id}
+                type="button"
+                className="block w-full h-full text-left rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+                onClick={() => { setDateFrom(''); setDateTo(''); openHistory(p, '', ''); }}
+              >
+                <Card className="h-full hover:shadow-card-md transition cursor-pointer">
                 <div className="flex items-center gap-3 mb-3">
                   <Avatar initials={p.initials} color={p.avatar_color} size="md" />
                   <div className="min-w-0">
@@ -228,7 +234,8 @@ export function PersonnelLocationPage() {
                 ) : (
                   <div className="text-sm text-ink-400">Sin ubicación registrada</div>
                 )}
-              </Card>
+                </Card>
+              </button>
             );
           })}
         </div>
