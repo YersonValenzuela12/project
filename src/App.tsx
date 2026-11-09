@@ -28,6 +28,8 @@ import { PersonnelLocationPage } from '@/pages/admin/PersonnelLocationPage';
 import { recordUserLocation } from '@/lib/locationTracking';
 import { logActivity } from '@/lib/activityLog';
 import { startOtTrackingLoop } from '@/lib/otTracking';
+import { TrainingPage } from '@/pages/technician/TrainingPage';
+import { TrainingAdminPage } from '@/pages/admin/TrainingAdminPage';
 
 const BREADCRUMB_ROLE_LABEL: Record<Role, string> = {
   admin: 'Administrator',
@@ -114,6 +116,10 @@ function App() {
         return <AuditPage />;
       case 'settings':
         return <SettingsPage />;
+      case 'training':
+        return <TrainingPage />;
+      case 'training_admin':
+        return <TrainingAdminPage />;  
       case 'forms':
         return <FormsPage />;
         case 'workspace':

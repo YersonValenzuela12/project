@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase';
 import { useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { SupportCard } from '@/components/SupportCard';
+import { SkillsCard } from '@/components/SkillsCard';
 
 
   function formatBytes(bytes: number) {
@@ -585,7 +586,7 @@ export function ProfilePage() {
             <InfoLine label="Correo" value={user.email} />
             <InfoLine label="Telefono" value={user.phone} />
             <InfoLine label="Distrito" value={user.region} />
-             <InfoLine label="Perfil" value={user.joined} />
+             <InfoLine label="Perfil" value={user.name} />
           </div>
           <SupportCard />
         </Card>
@@ -659,14 +660,7 @@ export function ProfilePage() {
               </div>
             </div>
           </Card>
-          <Card>
-            <SectionHeader title="Habilidades & Certificaciones" />
-            <div className="flex flex-wrap gap-2">
-              {['CCTV', 'Access Control ', 'Fire Alarm ', 'Fiber Splicing', 'BMS '].map((s) => (
-                <Badge key={s} className="bg-primary-50 text-primary-700">{s}</Badge>
-              ))}
-            </div>
-          </Card>
+          <SkillsCard />
         </div>
       </div>
     </div>

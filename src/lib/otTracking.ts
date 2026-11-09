@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { logActivity } from './activityLog';
+import { getPositionIfAllowed } from './geo';
 
 // Frequency is intentionally a single constant so it can be tuned later
 // without touching the tracking logic itself (spec section 5).
@@ -20,16 +21,11 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
   }
 }
 
-function getCurrentPosition(): Promise<{ lat: number; lng: number; accuracy?: number }> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) { reject(new Error('Geolocation not supported')); return; }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-      (err) => reject(err),
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  });
-}
+   async function getCurrentPosition(): Promise<{ lat: number; lng: number; accuracy?: number }> {
+       const position = await getPositionIfAllowed();
+       if (!position) throw new Error('Location not available');
+       return position;
+     }
 
 /**
  * A work order's tracking window is computed from real Date objects

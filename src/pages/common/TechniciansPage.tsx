@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { workOrders } from '@/data/mockData';
 import { UserFormModal, type ProfileRow } from '@/components/UserFormModal';
+import { useTeamSkills, SkillChips } from '@/components/TeamSkills';
 
 const ROLE_BREADCRUMB: Record<string, string> = {
   admin: 'Administrator',
@@ -28,6 +29,7 @@ export function TechniciansPage({
   const [rows, setRows] = useState<ProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const { skills: teamSkills, canSee: canSeeSkills } = useTeamSkills();
 
   const fetchPeople = async () => {
     setLoading(true);
@@ -92,6 +94,7 @@ export function TechniciansPage({
                   </div>
                   {adminView && <button className="h-8 w-8 rounded-md hover:bg-ink-100 flex items-center justify-center text-ink-400"><MoreVertical size={16} /></button>}
                 </div>
+                 {canSeeSkills && <div className="mt-3"><SkillChips skills={teamSkills.get(t.id)} max={8} /></div>}
                 <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-ink-100 text-center">
                   <div><div className="text-base font-bold text-ink-900">{active.length}</div><div className="text-[11px] text-ink-500">Active</div></div>
                   <div><div className="text-base font-bold text-ink-900">{completed}</div><div className="text-[11px] text-ink-500">Done</div></div>

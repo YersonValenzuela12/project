@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getPositionIfAllowed } from './geo';
 
 type Source = 'LOGIN' | 'ATTENDANCE' | 'OTHER';
 
@@ -17,21 +18,14 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
   }
 }
 
-function getCurrentPosition(): Promise<{ lat: number; lng: number; accuracy?: number }> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) { reject(new Error('Geolocation not supported')); return; }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-      (err) => reject(err),
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  });
-}
-
 /**
  * Records the user's current location, silently, without disrupting whatever
  * flow called it (login, attendance, etc.). Reuses already-obtained
  * coordinates when passed in, to avoid asking the browser for GPS twice.
+ *
+ * It never asks for permission by itself: if the person has not allowed
+ * location (yet), there is simply nothing to record. The permission is asked on
+ * the Asistencia page, where the person opens it on purpose.
  */
 export async function recordUserLocation(
   userId: string,
@@ -39,7 +33,9 @@ export async function recordUserLocation(
   coords?: { lat: number; lng: number; accuracy?: number },
 ) {
   try {
-    const position = coords ?? await getCurrentPosition();
+    const position = coords ?? await getPositionIfAllowed();
+    if (!position) return; // location not allowed: nothing to record, and nothing printed in the console
+
     const district = await reverseGeocode(position.lat, position.lng);
     await supabase.from('user_locations').insert({
       user_id: userId,
@@ -51,6 +47,7 @@ export async function recordUserLocation(
     });
   } catch (e) {
     // Never block the calling flow (login, check-in) just because location failed.
-    console.error('No se pudo registrar la ubicación:', e);
+    // debug level: hidden in the console unless "Verbose" is on, so it does not look like an error.
+    console.debug('No se pudo registrar la ubicación:', e);
   }
 }

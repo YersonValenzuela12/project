@@ -159,7 +159,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="label mb-0">Contraseña</label>
-                <button type="button" onClick={openForgot} className="text-xs font-medium text-primary-600 hover:text-primary-700">Forgot password?</button>
+                <button type="button" onClick={openForgot} className="text-xs font-medium text-primary-600 hover:text-primary-700">Olvide la contraseña?</button>
               </div>
               <div className="relative">
                 <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
@@ -175,11 +175,11 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
             <label className="flex items-center gap-2.5 cursor-pointer select-none">
               <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 rounded border-ink-300 text-primary-600 focus:ring-primary-500" />
-              <span className="text-sm text-ink-600">Keep me signed in for 30 days</span>
+              <span className="text-sm text-ink-600">Mantener la sesion iniciada</span>
             </label>
 
             <button type="submit" disabled={loading} className="btn-primary w-full py-2.5 text-sm disabled:opacity-70">
-              {loading ? 'ingresar…' : (<>Sign in <ArrowRight size={16} /></>)}
+              {loading ? 'ingresar…' : (<>Ingresar <ArrowRight size={16} /></>)}
             </button>
           </form>
 {/*}
@@ -214,7 +214,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 <br/>
 <br/>
           <p className="text-center text-xs text-ink-400 mt-8">
-            Protected by Electronics Selecom Information Systems · © 2026
+            Protected by Electronics Selecom. Information Systems · © 2026
           </p>
         </div>
       </div>

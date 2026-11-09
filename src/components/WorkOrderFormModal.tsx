@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Modal, Avatar, Badge } from '@/components/ui';
 import { supabase } from '@/lib/supabase';
 import { syncTrackingSessionsForWorkOrder } from '@/lib/otTracking';
+import { useTeamSkills, SkillChips } from '@/components/TeamSkills';
+
 
 interface PersonOption {
   id: string;
@@ -51,6 +53,41 @@ async function compressImage(file: File): Promise<Blob> {
   }
 }
 
+// Calls the create-calendar-event function and returns a list of readable problems (empty = all good).
+async function syncGoogleCalendar(
+  orderId: string,
+  userIds: string[],
+  removeUserIds: string[],
+  nameOf: (id: string) => string,
+): Promise<string[]> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-calendar-event`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ work_order_id: orderId, user_ids: userIds, remove_user_ids: removeUserIds }),
+    });
+    const body = await res.json().catch(() => ({}));
+    console.info('[Google Calendar]', res.status, body);
+    if (!res.ok) return [`• No se pudo contactar al servicio de calendario (${body?.error ?? `HTTP ${res.status}`}).`];
+
+    const problems: string[] = [];
+    for (const r of body.results ?? []) {
+      if (r.status === 'reconnect_required') problems.push(`• ${nameOf(r.userId)}: debe volver a conectar Google en su perfil (Perfil → Seguridad).`);
+      else if (r.status === 'google_error') problems.push(`• ${nameOf(r.userId)}: Google rechazó el evento (${r.detail ?? 'sin detalle'}).`);
+    }
+    return problems;
+  } catch (e) {
+    console.error('Google Calendar sync failed:', e);
+    return ['• No se pudo contactar al servicio de calendario.'];
+  }
+}
+
+
 export function WorkOrderFormModal({
   order = null,
   onClose,
@@ -62,6 +99,7 @@ export function WorkOrderFormModal({
 }) {
   const isEdit = !!order;
   const [people, setPeople] = useState<PersonOption[]>([]);
+    const { skills: teamSkills, canSee: canSeeSkills } = useTeamSkills();
   const [client, setClient] = useState(order?.client ?? '');
   const [site, setSite] = useState(order?.site ?? '');
   const [address, setAddress] = useState(order?.address ?? '');
@@ -92,6 +130,7 @@ export function WorkOrderFormModal({
   const [description, setDescription] = useState(order?.description ?? '');
   const [equipment, setEquipment] = useState(order?.equipment ?? '');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [initialIds, setInitialIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -125,6 +164,7 @@ export function WorkOrderFormModal({
           .eq('work_order_id', order.id);
         (existing ?? []).forEach((r: any) => preselected.add(r.user_id));
         setSelectedIds([...preselected]);
+        setInitialIds([...preselected]);
       }
     })();
   }, []);
@@ -292,22 +332,19 @@ export function WorkOrderFormModal({
         related_work_order_id: orderId,
       }));
       await supabase.from('notifications').insert(notifRows);
+    }
 
-      // Sync to Google Calendar for anyone who has it connected (best-effort, doesn't block saving)
-      try {
-        const { data: { session: googleSession } } = await supabase.auth.getSession();
-        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-calendar-event`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${googleSession?.access_token}`,
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({ work_order_id: orderId, user_ids: selectedIds }),
-        });
-      } catch (e) {
-        console.error('Google Calendar sync failed:', e);
+    // Google Calendar: add/update the event for each assigned person who connected Google, and remove it
+    // for anyone taken off the job. A failure never blocks saving, but it is shown instead of staying silent.
+    const removedIds = isEdit ? initialIds.filter((id) => !selectedIds.includes(id)) : [];
+    if (orderId && (selectedIds.length > 0 || removedIds.length > 0)) {
+      const nameOf = (id: string) => people.find((p) => p.id === id)?.full_name ?? 'Una persona';
+      const problems = await syncGoogleCalendar(orderId, selectedIds, removedIds, nameOf);
+      if (problems.length > 0) {
+        window.alert(`La orden se guardó, pero Google Calendar tuvo problemas:\n\n${problems.join('\n')}`);
       }
+    } else {
+      console.info('[Google Calendar] No se sincronizó: la orden no tiene personas asignadas.');
     }
 
     if (orderId) {
@@ -474,18 +511,21 @@ export function WorkOrderFormModal({
 
       <div className="mt-5">
         <label className="label">Assignacion de tecnicos / supervisores</label>
-        <div className="border border-ink-200 rounded-lg max-h-48 overflow-y-auto divide-y divide-ink-50">
+        <div className="border border-ink-200 rounded-lg max-h-64 overflow-y-auto divide-y divide-ink-50">
           {people.map((p) => (
             <label key={p.id} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-ink-50">
               <input type="checkbox" checked={selectedIds.includes(p.id)} onChange={() => toggle(p.id)} className="h-4 w-4 rounded border-ink-300 text-primary-600 focus:ring-primary-500" />
               <Avatar initials={p.initials} color={p.avatar_color} size="xs" />
-              <span className="text-sm text-ink-800 flex-1">{p.full_name}</span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm text-ink-800">{p.full_name}</span>
+                {canSeeSkills && <SkillChips skills={teamSkills.get(p.id)} max={3} />}
+              </span>
               <Badge className={p.role === 'supervisor' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}>{p.role}</Badge>
             </label>
           ))}
           {people.length === 0 && <div className="px-3 py-4 text-sm text-ink-400 text-center">No technicians or supervisors found.</div>}
         </div>
-        <p className="text-xs text-ink-400 mt-1.5">La seleccion de tecnicos se mostrara en el calendario.</p>
+        <p className="text-xs text-ink-400 mt-1.5">Se agregará al Google Calendar de cada persona asignada que haya conectado su cuenta (Perfil → Seguridad). Si no marcas a nadie, no se agrega a ningún calendario.</p>
       </div>
     </Modal>
   );

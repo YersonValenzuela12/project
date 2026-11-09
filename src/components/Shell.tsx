@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, Users, ShieldCheck, Calendar, FileText, BarChart3, Settings,
   Bell, Search, ChevronDown, LogOut, UserCircle, HelpCircle, Building2,
-  ClipboardList, History, FolderOpen, FormInput, Wrench, MapPin, Clock,
+  ClipboardList, History, FolderOpen, FormInput, Wrench, MapPin, Clock, GraduationCap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/Logo';
@@ -19,11 +19,11 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
       { label: 'Panel de Control', icon: LayoutDashboard, page: 'dashboard' },
     ]},
     { group: 'Administración', items: [
-      { label: 'Usuarios', icon: Users, page: 'users' },
-     
+      { label: 'Usuarios', icon: Users, page: 'users' },     
       { label: 'Supervisores', icon: Building2, page: 'supervisors' },
       { label: 'Tecnicos', icon: Wrench, page: 'technicians' },
       { label: 'Ubicación del Personal', icon: MapPin, page: 'personnel_location' },
+      { label: 'Capacitación técnica', icon: GraduationCap, page: 'training_admin' },
     ]},
     { group: 'Operationes', items: [
       { label: 'Ordenes de Trabajo', icon: ClipboardList, page: 'workorders' },
@@ -68,6 +68,7 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
       { label: 'Documentos', icon: FolderOpen, page: 'documents' },
       { label: 'Formularios', icon: FormInput, page: 'forms' },
       { label: 'Espacio de Trabajo', icon: FileText, page: 'workspace' },
+      { label: 'Capacitación técnica', icon: GraduationCap, page: 'training' },
     ]},
     { group: 'Seguridad', items: [
       { label: 'Asistencia', icon: Clock, page: 'attendance' },

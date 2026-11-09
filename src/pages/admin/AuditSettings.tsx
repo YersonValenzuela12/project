@@ -158,7 +158,7 @@ export function SettingsPage() {
   const [currency, setCurrency] = useState('Soles (S/.)');
   const [workingHours, setWorkingHours] = useState('');
   const [supportWhatsapp, setSupportWhatsapp] = useState('');
-
+  const [skillsRoles, setSkillsRoles] = useState<string[]>(['supervisor', 'coordinador']);
   const [userStats, setUserStats] = useState<{ total: number; active: number; suspended: number; byRole: Record<string, number> } | null>(null);
   const [docStats, setDocStats] = useState<{ total: number; sitesWithPhoto: number; totalSites: number } | null>(null);
 
@@ -173,6 +173,7 @@ export function SettingsPage() {
         setCurrency(data.currency ?? 'Soles (S/.)');
         setWorkingHours(data.working_hours ?? '');
         setSupportWhatsapp(data.support_whatsapp ?? '');
+        setSkillsRoles(data.skills_roles ?? ['supervisor', 'coordinador']);
       }
       setLoading(false);
     })();
@@ -215,6 +216,7 @@ export function SettingsPage() {
         currency,
         working_hours: workingHours,
         support_whatsapp: supportWhatsapp.replace(/\D/g, '') || null,
+        skills_visible_roles: skillsRoles,
         updated_at: new Date().toISOString(),
       })
       .eq('id', 'global');
@@ -286,6 +288,18 @@ export function SettingsPage() {
                     </select>
                   </div>
                   <div className="col-span-2"><label className="label">WhatsApp de soporte</label><input className="input" value={supportWhatsapp} onChange={(e) => setSupportWhatsapp(e.target.value)} placeholder="51979232158" /><p className="text-[11px] text-ink-400 mt-1">Con código de país (Perú: 51). Los usuarios verán un botón para escribirte por WhatsApp desde su perfil.</p></div>
+                  <div className="col-span-2">
+                    <label className="label">¿Quién puede ver las habilidades del equipo?</label>
+                    <div className="flex flex-wrap gap-4 mt-1">
+                      <span className="text-sm text-ink-500 flex items-center gap-2"><input type="checkbox" checked disabled /> Administradores (siempre)</span>
+                      {[['supervisor', 'Supervisores'], ['coordinador', 'Coordinadores']].map(([role, label]) => (
+                        <label key={role} className="text-sm text-ink-800 flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={skillsRoles.includes(role)} onChange={() => setSkillsRoles((prev) => prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role])} /> {label}
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-ink-400 mt-1">Los técnicos nunca ven las habilidades de otros. Cada persona siempre ve las suyas.</p>
+                  </div>
                 </div>
               )}
             </Card>
