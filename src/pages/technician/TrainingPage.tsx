@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { parseDriveUrl, thumbnailUrl } from '@/lib/drive';
+import { resolveMedia } from '@/lib/media';
+import { youtubeThumbnailUrl } from '@/lib/youtube';
 import {
   categoryIcon, TYPE_LABEL, TYPE_ICON, LEVEL_LABEL, LEVEL_BADGE, fmtDuration,
   type TrainingCategory, type TrainingContent,
@@ -14,11 +16,12 @@ import { TrainingViewerModal } from '@/components/TrainingViewer';
 import type { LucideIcon } from 'lucide-react';
 
 // Cover image from Drive, with an automatic fallback (colored block + category icon) if it does not load.
-function Cover({ url, Icon }: { url: string | null; Icon: LucideIcon }) {
+function Cover({ url, fallbackUrl, Icon }: { url: string | null; fallbackUrl: string | null; Icon: LucideIcon }) {
   const [failed, setFailed] = useState(false);
   const parsed = url ? parseDriveUrl(url) : null;
+  const src = parsed ? thumbnailUrl(parsed, 640) : fallbackUrl;
 
-  if (!parsed || failed) {
+  if (!src || failed) {
     return (
       <div className="aspect-video w-full bg-gradient-to-br from-primary-50 to-ink-100 flex items-center justify-center text-primary-500">
         <Icon size={36} />
@@ -27,7 +30,7 @@ function Cover({ url, Icon }: { url: string | null; Icon: LucideIcon }) {
   }
   return (
     <img
-      src={thumbnailUrl(parsed, 640)}
+      src={src}
       alt=""
       loading="lazy"
       referrerPolicy="no-referrer"
@@ -37,19 +40,32 @@ function Cover({ url, Icon }: { url: string | null; Icon: LucideIcon }) {
   );
 }
 
+// YouTube already makes a cover for every video, so the administrator does not have to add one.
+function ytCover(i: TrainingContent): string | null {
+  const m = resolveMedia(i.source, i.drive_url);
+  return m?.source === 'YOUTUBE' ? youtubeThumbnailUrl(m.youtube) : null;
+}
+
+const ROLE_LABEL: Record<string, string> = { technician: 'Técnico', supervisor: 'Supervisor', coordinador: 'Coordinador', admin: 'Administrador' };
+
 export function TrainingPage() {
   const { profile } = useAuth();
   const [cats, setCats] = useState<TrainingCategory[]>([]);
   const [items, setItems] = useState<TrainingContent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [noAccess, setNoAccess] = useState(false);
   const [catId, setCatId] = useState<string>('all');
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<TrainingContent | null>(null);
 
   useEffect(() => {
     (async () => {
-      // The database only returns published contents (and active categories) to technicians.
+      // Supervisors and coordinators only get in if the administrator enabled them.
+      const { data: allowed } = await supabase.rpc('can_view_training');
+      if (!allowed) { setNoAccess(true); setLoading(false); return; }
+
+      // The database only returns published contents (and active categories) to people with access.
       const [catRes, itemRes] = await Promise.all([
         supabase.from('training_categories').select('*').eq('is_active', true).order('display_order'),
         supabase.from('training_contents').select('*').eq('status', 'PUBLISHED').order('display_order').order('created_at', { ascending: false }),
@@ -80,11 +96,13 @@ export function TrainingPage() {
       <PageHeader
         title="Capacitación técnica"
         subtitle="Videos, infografías y guías visuales de los sistemas que trabajas"
-        breadcrumbs={['Inicio', 'Técnico', 'Capacitación técnica']}
+        breadcrumbs={['Inicio', ROLE_LABEL[profile.role] ?? 'Técnico', 'Capacitación técnica']}
       />
 
       {loading ? (
         <Card><div className="p-8 text-center text-sm text-ink-500">Cargando…</div></Card>
+      ) : noAccess ? (
+        <Card><div className="p-8 text-center text-sm text-ink-500">No tienes acceso a la biblioteca de capacitación. Si la necesitas, pídesela al administrador.</div></Card>
       ) : error ? (
         <Card><div className="p-8 text-center text-sm text-red-600">{error}</div></Card>
       ) : cats.length === 0 ? (
@@ -155,7 +173,7 @@ export function TrainingPage() {
                   >
                     <Card pad={false} className="h-full overflow-hidden transition hover:shadow-card-md cursor-pointer">
                       <div className="relative">
-                        <Cover url={i.thumbnail_url} Icon={Icon} />
+                        <Cover url={i.thumbnail_url} fallbackUrl={ytCover(i)} Icon={Icon} />
                         {i.content_type === 'VIDEO' && (
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div className="h-11 w-11 rounded-full bg-black/55 text-white flex items-center justify-center"><Play size={18} /></div>

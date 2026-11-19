@@ -56,6 +56,7 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
       { label: 'Formularios', icon: FormInput, page: 'forms' },
       { label: 'Espacio de Trabajo', icon: FileText, page: 'workspace' },
       { label: 'Reports', icon: BarChart3, page: 'reports' },
+      { label: 'Capacitación técnica', icon: GraduationCap, page: 'training' },
     ]},
   ],
   technician: [
@@ -93,6 +94,7 @@ const navByRole: Record<Role, { group: string; items: NavConfig[] }[]> = {
       { label: 'Documentos', icon: FolderOpen, page: 'documents' },
       { label: 'Solicitudes', icon: FormInput, page: 'form_requests' },
       { label: 'Reportes', icon: BarChart3, page: 'reports' },
+      { label: 'Capacitación técnica', icon: GraduationCap, page: 'training' },
     ]},
   ],
 };
@@ -143,9 +145,22 @@ export function Shell({ role, page, setPage, onLogout, searchQuery, onSearchChan
   const userTitle = profile?.title ?? '';
   const userInitials = profile?.initials ?? 'U';
   const userAvatarColor = profile?.avatar_color ?? 'bg-primary-600';
-  const nav = navByRole[role];
+  const [hasTraining, setHasTraining] = useState(false);
+  const nav = navByRole[role]
+    .map((group) => ({ ...group, items: group.items.filter((item) => item.page !== 'training' || hasTraining) }))
+    .filter((group) => group.items.length > 0);
   const searchPlaceholder = SEARCH_PLACEHOLDER[page];
   const showSearch = !!searchPlaceholder;
+  
+
+  useEffect(() => {
+    if (!profile) return;
+    if (role === 'supervisor' || role === 'coordinador') {
+      supabase.rpc('can_view_training').then(({ data }) => setHasTraining(!!data));
+    } else {
+      setHasTraining(role === 'technician');
+    }
+  }, [profile?.id, role]);
 
   useEffect(() => {
     if (!profile) return;
@@ -175,6 +190,8 @@ export function Shell({ role, page, setPage, onLogout, searchQuery, onSearchChan
     }
     setNotifOpen(false);
     if (n.related_work_order_id) setPage('workorders');
+    else if (n.type === 'training_access_request') setPage('training_admin');
+    else if (n.type === 'training_access_resolved') setPage('training');
     else setPage('notifications');
   };
 

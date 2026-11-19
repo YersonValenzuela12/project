@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, X, Tags, CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, Badge } from '@/components/ui';
@@ -8,13 +8,24 @@ import { logActivity } from '@/lib/activityLog';
 import { cn } from '@/lib/utils';
 import { parseDriveUrl, driveUrlProblem, thumbnailUrl } from '@/lib/drive';
 import {
-  categoryIcon, TYPE_LABEL, LEVEL_LABEL, STATUS_LABEL, STATUS_BADGE, fmtDuration,
-  type TrainingCategory, type TrainingContent, type ContentType, type Level, type Status,
+  categoryIcon, TYPE_LABEL, LEVEL_LABEL, STATUS_LABEL, STATUS_BADGE, SOURCE_LABEL, fmtDuration,
+  type TrainingCategory, type TrainingContent, type ContentType, type Level, type Status, type Source,
 } from '@/lib/trainingConfig';
 import { TrainingViewer } from '@/components/TrainingViewer';
+import { youtubeProblem, youtubeThumbnailUrl } from '@/lib/youtube';
+import { resolveMedia } from '@/lib/media';
+import { AccessRequestsView, ActivityView, AccessGrantsView } from '@/components/TrainingAdminExtras';
 
 const byOrder = (a: TrainingContent, b: TrainingContent) =>
   a.display_order - b.display_order || a.created_at.localeCompare(b.created_at);
+
+// Cover shown in the list: the administrator's own (Drive) cover, or the one YouTube makes for its videos.
+function thumbSource(i: TrainingContent): string | null {
+  const own = i.thumbnail_url ? parseDriveUrl(i.thumbnail_url) : null;
+  if (own) return thumbnailUrl(own, 240);
+  const m = resolveMedia(i.source, i.drive_url);
+  return m?.source === 'YOUTUBE' ? youtubeThumbnailUrl(m.youtube) : null;
+}
 
 // ---------------------------------------------------------------------------
 // Main screen
@@ -31,6 +42,9 @@ export function TrainingAdminPage() {
   const [editing, setEditing] = useState<TrainingContent | 'new' | null>(null);
   const [catsOpen, setCatsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [view, setView] = useState<'content' | 'requests' | 'grants' | 'activity'>('content');
+  const [pendingCount, setPendingCount] = useState(0);
+  const autoTab = useRef(false);
 
   const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
@@ -47,6 +61,10 @@ export function TrainingAdminPage() {
       setCats(catRes.data ?? []);
       setItems(itemRes.data ?? []);
     }
+    const { count } = await supabase.from('training_access_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING');
+    setPendingCount(count ?? 0);
+    // The first time the screen opens, go straight to the requests if any are waiting.
+    if (!autoTab.current) { autoTab.current = true; if ((count ?? 0) > 0) setView('requests'); }
     setLoading(false);
   };
 
@@ -123,6 +141,28 @@ export function TrainingAdminPage() {
         }
       />
 
+      <div className="flex items-center gap-1.5 bg-ink-50 rounded-lg p-1 w-fit mb-4 flex-wrap">
+        {([
+          ['content', 'Contenidos'],
+          ['requests', pendingCount > 0 ? `Solicitudes de acceso (${pendingCount})` : 'Solicitudes de acceso'],
+          ['grants', 'Quién tiene acceso'],
+          ['activity', 'Actividad'],
+        ] as const).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setView(key)}
+            className={cn('px-3 py-1.5 rounded-md text-xs font-semibold transition', view === key ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-800')}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'requests' && <AccessRequestsView onChanged={load} />}
+      {view === 'grants' && <AccessGrantsView />}
+      {view === 'activity' && <ActivityView />}
+
+      {view === 'content' && (<>
       <Card className="mb-4">
         <div className="flex flex-wrap items-center gap-2">
           <input className="input h-9 flex-1 min-w-[180px]" placeholder="Buscar por título…" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -150,20 +190,20 @@ export function TrainingAdminPage() {
           {list.map((i) => {
             const cat = catById.get(i.category_id);
             const Icon = categoryIcon(cat?.name ?? '');
-            const thumb = i.thumbnail_url ? parseDriveUrl(i.thumbnail_url) : null;
+            const thumbSrc = thumbSource(i);
             return (
               <Card key={i.id}>
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="h-12 w-20 rounded-md overflow-hidden bg-gradient-to-br from-primary-50 to-ink-100 flex items-center justify-center text-primary-500 shrink-0">
-                    {thumb ? (
-                      <img src={thumbnailUrl(thumb, 240)} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                    {thumbSrc ? (
+                      <img src={thumbSrc} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                     ) : <Icon size={20} />}
                   </div>
 
                   <div className="flex-1 min-w-[200px]">
                     <div className="font-semibold text-ink-900">{i.title}</div>
                     <div className="text-xs text-ink-500 mt-0.5">
-                      {cat?.name ?? 'Sin categoría'} · {TYPE_LABEL[i.content_type]} · {LEVEL_LABEL[i.level]}
+                      {cat?.name ?? 'Sin categoría'} · {TYPE_LABEL[i.content_type]} · {LEVEL_LABEL[i.level]}{i.source === 'YOUTUBE' ? ' · YouTube' : ''}
                       {i.content_type === 'VIDEO' && i.duration_minutes ? ` · ${fmtDuration(i.duration_minutes)}` : ''}
                       {!i.drive_url && <span className="text-amber-600"> · sin enlace</span>}
                     </div>
@@ -191,6 +231,8 @@ export function TrainingAdminPage() {
           })}
         </div>
       )}
+
+      </>)}
 
       {editing && (
         <ContentForm
@@ -224,6 +266,7 @@ function ContentForm({
   const [title, setTitle] = useState(item?.title ?? '');
   const [description, setDescription] = useState(item?.description ?? '');
   const [categoryId, setCategoryId] = useState(item?.category_id ?? firstCat);
+  const [source, setSource] = useState<Source>(item?.source ?? 'DRIVE');
   const [type, setType] = useState<ContentType>(item?.content_type ?? 'VIDEO');
   const [level, setLevel] = useState<Level>(item?.level ?? 'BASIC');
   const [duration, setDuration] = useState(item?.duration_minutes ? String(item.duration_minutes) : '');
@@ -235,28 +278,40 @@ function ContentForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const linkProblem = driveUrl.trim() ? driveUrlProblem(driveUrl) : null;
-  const parsed = driveUrl.trim() && !linkProblem ? parseDriveUrl(driveUrl) : null;
+  const isYoutube = source === 'YOUTUBE';
+  const isVideo = isYoutube || type === 'VIDEO'; // a YouTube link is always a video
+
+  const linkProblem = driveUrl.trim() ? (isYoutube ? youtubeProblem(driveUrl) : driveUrlProblem(driveUrl)) : null;
+  const media = driveUrl.trim() && !linkProblem ? resolveMedia(source, driveUrl) : null;
   const thumbProblem = thumbUrl.trim() ? driveUrlProblem(thumbUrl) : null;
+
+  const changeSource = (next: Source) => {
+    if (next === source) return;
+    setSource(next);
+    setDriveUrl(''); // a link from the other service would not be valid here
+    setShowPreview(false);
+    if (next === 'YOUTUBE') setType('VIDEO');
+  };
 
   const save = async () => {
     setError(null);
     if (title.trim().length < 3) { setError('El título debe tener al menos 3 letras.'); return; }
     if (!categoryId) { setError('Elige una categoría.'); return; }
-    if (!driveUrl.trim() && status !== 'DRAFT') { setError('Para publicar o dejar inactivo necesitas el enlace de Google Drive. Si aún no lo tienes, guárdalo como Borrador.'); return; }
+    if (!driveUrl.trim() && status !== 'DRAFT') { setError(`Para publicar o dejar inactivo necesitas el enlace de ${isYoutube ? 'YouTube' : 'Google Drive'}. Si aún no lo tienes, guárdalo como Borrador.`); return; }
     if (driveUrl.trim() && linkProblem) { setError(linkProblem); return; }
     if (thumbUrl.trim() && thumbProblem) { setError(`Portada: ${thumbProblem}`); return; }
-    if (type === 'VIDEO' && duration && !(Number(duration) >= 1 && Number(duration) <= 600)) { setError('La duración debe estar entre 1 y 600 minutos.'); return; }
+    if (isVideo && duration && !(Number(duration) >= 1 && Number(duration) <= 600)) { setError('La duración debe estar entre 1 y 600 minutos.'); return; }
 
     const payload = {
       title: title.trim(),
       description: description.trim(),
       category_id: categoryId,
-      content_type: type,
+      source,
+      content_type: (isYoutube ? 'VIDEO' : type) as ContentType,
       level,
       drive_url: driveUrl.trim() || null,
       thumbnail_url: thumbUrl.trim() || null,
-      duration_minutes: type === 'VIDEO' && duration ? Number(duration) : null,
+      duration_minutes: isVideo && duration ? Number(duration) : null,
       display_order: Math.max(1, Math.round(Number(order)) || 1),
       status,
     };
@@ -305,6 +360,25 @@ function ContentForm({
             <textarea className="input" rows={3} maxLength={600} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Qué aprende el técnico con este contenido…" />
           </div>
 
+          <div>
+            <label className="label">Origen del contenido</label>
+            <div className="flex gap-2">
+              {(['DRIVE', 'YOUTUBE'] as Source[]).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => changeSource(s)}
+                  className={cn(
+                    'flex-1 h-9 rounded-lg border text-sm font-medium transition',
+                    source === s ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-ink-200 text-ink-600 hover:bg-ink-50',
+                  )}
+                >
+                  {SOURCE_LABEL[s]}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="label">Categoría *</label>
@@ -321,9 +395,10 @@ function ContentForm({
             </div>
             <div>
               <label className="label">Tipo *</label>
-              <select className="input" value={type} onChange={(e) => setType(e.target.value as ContentType)}>
+              <select className="input" value={isYoutube ? 'VIDEO' : type} disabled={isYoutube} onChange={(e) => setType(e.target.value as ContentType)}>
                 {(Object.keys(TYPE_LABEL) as ContentType[]).map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
               </select>
+              {isYoutube && <p className="text-[11px] text-ink-400 mt-1">YouTube es siempre video.</p>}
             </div>
             <div>
               <label className="label">Nivel *</label>
@@ -334,35 +409,60 @@ function ContentForm({
           </div>
 
           <div>
-            <label className="label">Enlace del contenido en Google Drive {status === 'DRAFT' ? '' : '*'}</label>
-            <input className="input" value={driveUrl} onChange={(e) => { setDriveUrl(e.target.value); setShowPreview(false); }} placeholder="https://drive.google.com/file/d/…/view" />
+            <label className="label">Enlace de {isYoutube ? 'YouTube' : 'Google Drive'} {status === 'DRAFT' ? '' : '*'}</label>
+            <input
+              className="input"
+              value={driveUrl}
+              onChange={(e) => { setDriveUrl(e.target.value); setShowPreview(false); }}
+              placeholder={isYoutube ? 'https://www.youtube.com/watch?v=… o https://youtu.be/…' : 'https://drive.google.com/file/d/…/view'}
+            />
             {driveUrl.trim() && (
               linkProblem
                 ? <p className="text-xs text-red-600 mt-1">{linkProblem}</p>
-                : <p className="text-xs text-emerald-700 mt-1">✓ Enlace válido ({parsed?.kind === 'file' ? 'archivo de Drive' : 'documento de Google'}).</p>
+                : (
+                  <p className="text-xs text-emerald-700 mt-1">
+                    ✓ Enlace válido (
+                    {media?.source === 'YOUTUBE'
+                      ? (media.youtube.kind === 'playlist' ? 'lista de reproducción de YouTube' : 'video de YouTube')
+                      : media?.source === 'DRIVE' && media.drive.kind === 'file' ? 'archivo de Drive' : 'documento de Google'}
+                    ).
+                  </p>
+                )
             )}
-            <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-              <b>Importante:</b> en Drive abre el archivo → <b>Compartir</b> → Acceso general → <b>«Cualquier persona con el enlace»</b> → rol <b>Lector</b>.
-              Si no lo haces, los técnicos verán «Necesitas acceso». No uses este módulo para documentos confidenciales.
-            </div>
-            {parsed && (
+
+            {isYoutube ? (
+              <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                <b>Importante:</b> si el video es tuyo, súbelo a YouTube como <b>«No listado»</b>: lo ve quien tenga el enlace y no aparece en búsquedas.
+                Los videos <b>«Privados»</b> no se pueden insertar. Si el autor no permite insertar su video, no se verá en Selecom.
+                YouTube <b>no es privado de Selecom</b>: no lo uses para material confidencial.
+              </div>
+            ) : (
+              <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                <b>Importante:</b> en Drive abre el archivo → <b>Compartir</b> → Acceso general → <b>«Cualquier persona con el enlace»</b> → rol <b>Lector</b>.
+                Si no lo haces, los técnicos verán «Necesitas acceso». No uses este módulo para documentos confidenciales.
+              </div>
+            )}
+
+            {media && (
               <div className="mt-2">
                 <button type="button" className="btn-secondary h-8 text-xs" onClick={() => setShowPreview((s) => !s)}>
                   {showPreview ? 'Ocultar vista previa' : 'Probar cómo lo verá el técnico'}
                 </button>
-                {showPreview && <div className="mt-3"><TrainingViewer drive={parsed} type={type} title={title || 'Vista previa'} /></div>}
+                {showPreview && <div className="mt-3"><TrainingViewer media={media} type={isYoutube ? 'VIDEO' : type} title={title || 'Vista previa'} allowExternal /></div>}
               </div>
             )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">Imagen de portada (enlace de Drive, opcional)</label>
+              <label className="label">Imagen de portada {isYoutube ? '(opcional; YouTube la pone sola)' : '(enlace de Drive, opcional)'}</label>
               <input className="input" value={thumbUrl} onChange={(e) => setThumbUrl(e.target.value)} placeholder="https://drive.google.com/file/d/…/view" />
               {thumbUrl.trim() && thumbProblem && <p className="text-xs text-red-600 mt-1">{thumbProblem}</p>}
-              <p className="text-[11px] text-ink-400 mt-1">Si no carga, se muestra un bloque de color con el icono del sistema.</p>
+              <p className="text-[11px] text-ink-400 mt-1">
+                {isYoutube ? 'Si no pones una, se usa la miniatura del video.' : 'Si no carga, se muestra un bloque de color con el icono del sistema.'}
+              </p>
             </div>
-            {type === 'VIDEO' && (
+            {isVideo && (
               <div>
                 <label className="label">Duración en minutos (opcional)</label>
                 <input className="input" type="number" min="1" max="600" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="12" />

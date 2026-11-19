@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 export type ContentType = 'VIDEO' | 'IMAGE' | 'GUIDE';
 export type Level = 'BASIC' | 'INTERMEDIATE' | 'ADVANCED';
 export type Status = 'DRAFT' | 'PUBLISHED' | 'INACTIVE';
+export type Source = 'DRIVE' | 'YOUTUBE';
 
 export type TrainingCategory = {
   id: string;
@@ -19,7 +20,8 @@ export type TrainingContent = {
   category_id: string;
   content_type: ContentType;
   level: Level;
-  drive_url: string | null;
+  source: Source;
+  drive_url: string | null; // the content link: a Google Drive link or a YouTube link, depending on `source`
   thumbnail_url: string | null;
   duration_minutes: number | null;
   display_order: number;
@@ -66,3 +68,33 @@ export function fmtDuration(minutes?: number | null): string {
   const rest = minutes % 60;
   return `${Math.floor(minutes / 60)} h${rest ? ` ${rest} min` : ''}`;
 }
+
+// ---- Access requests ("external access", only as a last resort and only if the administrator approves) ----
+export type RequestReason = 'NO_LOAD' | 'NO_SIGNAL' | 'OTHER';
+export type RequestStatus = 'PENDING' | 'GRANTED' | 'DENIED';
+
+export type AccessRequest = {
+  id: string;
+  content_id: string;
+  user_id: string;
+  reason: RequestReason;
+  note: string;
+  status: RequestStatus;
+  admin_note: string;
+  created_at: string;
+  resolved_at: string | null;
+};
+
+export const REASON_LABEL: Record<RequestReason, string> = {
+  NO_LOAD: 'No me carga en mi dispositivo',
+  NO_SIGNAL: 'Estoy en una zona sin buena señal',
+  OTHER: 'Otro motivo',
+};
+export const REQUEST_STATUS_LABEL: Record<RequestStatus, string> = { PENDING: 'Pendiente', GRANTED: 'Aprobada', DENIED: 'Rechazada' };
+export const REQUEST_STATUS_BADGE: Record<RequestStatus, string> = {
+  PENDING: 'bg-amber-50 text-amber-700',
+  GRANTED: 'bg-emerald-50 text-emerald-700',
+  DENIED: 'bg-red-50 text-red-700',
+};
+
+export const SOURCE_LABEL: Record<Source, string> = { DRIVE: 'Google Drive', YOUTUBE: 'YouTube' };
