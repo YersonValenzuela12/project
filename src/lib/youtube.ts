@@ -90,8 +90,10 @@ export function youtubeProblem(raw: string): string | null {
 
 // Address of the embedded player. "nocookie" is YouTube's privacy-friendly domain.
 // fs=0 hides YouTube's own fullscreen button (Selecom has its own "Ampliar"); rel=0 limits suggestions to the same channel.
-export function youtubeEmbedUrl(p: ParsedYoutube): string {
+export function youtubeEmbedUrl(p: ParsedYoutube, origin?: string): string {
   const q = new URLSearchParams({ rel: '0', modestbranding: '1', playsinline: '1', iv_load_policy: '3', fs: '0' });
+  // enablejsapi lets the page hear when YouTube refuses to play the video (so we can show our own short message).
+  if (origin) { q.set('enablejsapi', '1'); q.set('origin', origin); }
   const base = 'https://www.youtube-nocookie.com/embed';
   if (p.kind === 'video') {
     if (p.start) q.set('start', String(p.start));
